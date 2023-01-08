@@ -1,32 +1,32 @@
-from pydantic import BaseModel
-from typing import Optional
-
-
-class ItemBaseSchema(BaseModel):
-    name: str
-    price: int
-
-    class Config:
-        orm_mode = True
-
-
-class ItemSchema(ItemBaseSchema):
-    id: int
-    name: str
-    price: int
-
-    class Config:
-        orm_mode = True
+from pydantic import BaseModel, validator
+from typing import Optional, List
+from datetime import date, datetime
 
 
 class SourceBaseSchema(BaseModel):
     url: str
     video_title: str
+    video_type: str
+    episode_number: Optional[str] = ""
     ignore: Optional[bool] = False
     plex_id: Optional[str] = ""
+    upload_date: date
+    separate_album_per_video: bool
+
+    # when a source is created, it shouldn't have an album reference yet
+    # after establishing the source, the album name/details should be created
+    # check the db and create or get id
+    album_id: Optional[int]
 
     class Config:
         orm_mode = True
+
+    @validator("upload_date", pre=True)
+    def date_validate(cls, v):
+        if type(v) == str:
+            return datetime.strptime(v, "%m-%d-%Y")
+        else:
+            return v
 
     # this is how I did the relationship with Marshmallow
     # tracks = List(fields.Nested(TrackSchema(exclude=("id", "source"))))
@@ -119,3 +119,11 @@ class TagSchema(TagBaseSchema):
 
     class Config:
         orm_mode = True
+
+
+class SourceWithRelationships(SourceSchema):
+    album: AlbumSchema
+
+
+class AlbumWithRelationships(AlbumSchema):
+    sources: List[SourceSchema]

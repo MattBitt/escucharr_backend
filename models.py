@@ -1,24 +1,8 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declared_attr
-
-# from sqlalchemy.orm import relationship
-
+from sqlalchemy.orm import relationship
 from db import Base
-
-
-class Item(Base):
-    """
-    Defines the items model
-    """
-
-    __tablename__ = "items"
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    price = Column(Integer)
-
-    def __repr__(self) -> str:
-        return f"<Item {self.name}>"
 
 
 class CommonModel(object):
@@ -38,7 +22,10 @@ class Source(Base, CommonModel):  # type: ignore
     # Required
     url = Column(String(80), nullable=False)
     video_title = Column(String(80), nullable=False)
-    # upload_date = db.Column(db.Date, nullable=False)
+    video_type = Column(String(80), nullable=False)
+    episode_number = Column(String(80), nullable=False)
+    upload_date = Column(DateTime, nullable=False)
+    separate_album_per_video = Column(Boolean, nullable=False)
 
     # Not used on init
     ignore = Column(Boolean, nullable=False, default=False)
@@ -50,8 +37,8 @@ class Source(Base, CommonModel):  # type: ignore
     # tracks = relationship("Track", back_populates="source")
 
     # Many to One
-    # album_id = db.Column(db.Integer, db.ForeignKey("album.id"))
-    # album = db.relationship("Album", back_populates="album")
+    album_id = Column(Integer, ForeignKey("albums.id"))
+    album = relationship("Album", back_populates="sources")
 
     def __repr__(self):
         return "SourceModel(id=%d,video_title=%s, url=%s,)" % (
@@ -99,13 +86,13 @@ class Track(Base, CommonModel):  # type: ignore
 class Album(Base, CommonModel):  # type: ignore
     __tablename__ = "albums"
     # Init
-    album_name = Column(String(200), nullable=False)
+    album_name = Column(String(200), nullable=False, unique=True)
     path = Column(String(200), nullable=False)
     track_prefix = Column(String(200), default="")
-
+    sources = relationship("Source", back_populates="album")
     #     # Relationships
     #     # (One to Many)
-    #     sources = db.relationship("Source", back_populates="album")
+
     #     files = db.relationship("File", back_populates="album") # should have an image file
     #     tracks = db.relationship("Track", back_populates="album")
 

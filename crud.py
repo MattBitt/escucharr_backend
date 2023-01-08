@@ -2,21 +2,7 @@ from typing import List
 
 from sqlalchemy.orm import Session  # type: ignore
 
-from models import Item, Source, Track, Album, Word, Producer, Tag
-
-
-def get_item_by_name(session: Session, id: int) -> Item:
-    return session.query(Item).filter(Item.id == id).first()
-
-
-def get_items(session: Session, skip: int = 0, limit: int = 100) -> List[Item]:
-    return session.query(Item).offset(skip).limit(limit).all()
-
-
-def add_item(session: Session, item: Item):
-    item_model = Item(**item.dict())
-    session.add(item_model)
-    session.commit()
+from models import Source, Track, Album, Word, Producer, Tag
 
 
 class SourceRepo:
@@ -95,6 +81,9 @@ class AlbumRepo:
 
     def fetchById(self, id: int, session: Session) -> Album:
         return session.query(Album).filter_by(id=id).first()
+
+    def fetchByAlbumName(self, album_name: str, session: Session) -> Album:
+        return session.query(Album).filter_by(album_name=album_name).first()
 
     def fetchAll(self, session: Session) -> List[Album]:
         return session.query(Album).all()

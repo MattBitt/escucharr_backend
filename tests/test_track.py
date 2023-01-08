@@ -1,49 +1,4 @@
-from fastapi.testclient import TestClient
-
-from main import app
-import models
-from db import engine
-from data_generator import generate_fake_data
-
-# SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
-
-# engine = create_engine(
-#     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-# )
-# TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-# Base.metadata.create_all(bind=engine)
-
-
-# def override_get_db():
-#     try:
-#         db = TestingSessionLocal()
-#         yield db
-#     finally:
-#         db.close()
-
-
-# app.dependency_overrides[get_db] = override_get_db
-
-client = TestClient(app)
-models.Base.metadata.drop_all(bind=engine)
-models.Base.metadata.create_all(bind=engine)
-
-generate_fake_data()
-
-
-def test_get_root():
-    response = client.get("/")
-    assert response.status_code == 200
-    assert response.json() == {"msg": "Hello World"}
-
-
-# these tests should test the round trip from a request coming in from the
-# frontend to the response back to the front end
-
-
-def test_get_tracks():
+def test_get_tracks(client):
     response = client.get("/tracks")
     assert response.status_code == 200
     results = list(response.json())
@@ -51,7 +6,7 @@ def test_get_tracks():
     assert results[0]["track_title"] != ""
 
 
-def test_create_track():
+def test_create_track(client):
     request = {
         "track_title": "test track",
         "start_time": 105525,
@@ -70,7 +25,7 @@ def test_create_track():
     assert r_json["plex_id"] == ""
 
 
-def test_update_track():
+def test_update_track(client):
     response = client.get("/tracks")
     result = list(response.json())[0]
     old_title = result["track_title"]
@@ -89,7 +44,7 @@ def test_update_track():
     assert result["track_title"] == request["track_title"]
 
 
-def test_delete_track():
+def test_delete_track(client):
     response = client.get("/tracks")
     assert response.status_code == 200
     result = list(response.json())[0]

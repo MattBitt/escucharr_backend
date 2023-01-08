@@ -1,49 +1,10 @@
-from fastapi.testclient import TestClient
-
-from main import app
-from data_generator import generate_fake_data
-import models
-from db import engine
-
-# SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
-
-# engine = create_engine(
-#     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-# )
-# TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-# Base.metadata.create_all(bind=engine)
-
-
-# def override_get_db():
-#     try:
-#         db = TestingSessionLocal()
-#         yield db
-#     finally:
-#         db.close()
-
-
-# app.dependency_overrides[get_db] = override_get_db
-
-client = TestClient(app)
-models.Base.metadata.drop_all(bind=engine)
-models.Base.metadata.create_all(bind=engine)
-
-generate_fake_data()
-
-
-def test_get_root():
+def test_get_root(client):
     response = client.get("/")
     assert response.status_code == 200
     assert response.json() == {"msg": "Hello World"}
 
 
-# these tests should test the round trip from a request coming in from the
-# frontend to the response back to the front end
-
-
-def test_get_sources():
+def test_get_sources(client):
     response = client.get("/sources")
     assert response.status_code == 200
     results = list(response.json())
@@ -52,10 +13,14 @@ def test_get_sources():
     assert results[0]["video_title"] != ""
 
 
-def test_create_source():
+def test_create_source(client):
     request = {
         "url": "https://www.youtube.com/watch?v=AXFLcqQ0wGY",
         "video_title": "NEVER SEEN HARRY LIKE THIS?!!",
+        "video_type": "Omegle Bars",
+        "episode_number": "080",
+        "upload_date": "01-07-2023",
+        "separate_album_per_video": "True",
     }
     response = client.post("/sources/", json=request)
     assert response.status_code == 200
@@ -70,7 +35,7 @@ def test_create_source():
     assert r_json["plex_id"] == ""
 
 
-def test_update_source():
+def test_update_source(client):
     response = client.get("/sources")
     result = list(response.json())[0]
     old_title = result["video_title"]
@@ -78,9 +43,13 @@ def test_update_source():
     request = {
         "url": "https://www.youtube.com/watch?v=AXFLcqQ0wGY",
         "video_title": "NEVER SEEN HARRY LIKE THIS?!!",
+        "video_type": "Omegle Bars",
+        "episode_number": "080",
         "ignore": False,
         "plex_id": "",
         "id": result["id"],
+        "upload_date": "01-07-2023",
+        "separate_album_per_video": "True",
     }
     assert old_title != request["video_title"]
     assert old_url != request["url"]
@@ -92,7 +61,7 @@ def test_update_source():
     assert result["video_title"] == request["video_title"]
 
 
-def test_delete_source():
+def test_delete_source(client):
     response = client.get("/sources")
     assert response.status_code == 200
     result = list(response.json())[0]

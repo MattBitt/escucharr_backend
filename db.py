@@ -1,18 +1,33 @@
 import os
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
-from sqlalchemy import create_engine  # type: ignore
-from sqlalchemy.ext.declarative import declarative_base  # type: ignore
-from sqlalchemy.orm import sessionmaker  # type: ignore
+# host = os.environ["POSTGRES_HOST"]
+# port = os.environ["POSTGRES_PORT"]
+# user = os.environ["POSTGRES_USER"]
+# password = os.environ["POSTGRES_PASS"]
+# db = os.environ["POSTGRES_DB"]
+# dbtype = "postgresql+psycopg2"
+# SQLALCHEMY_DATABASE_URI = f"{dbtype}://{user}:{password }@{host}:{port}/{db}"
+env = os.environ["ENVIORNMENT"]
 
-host = os.environ["POSTGRES_HOST"]
-port = os.environ["POSTGRES_PORT"]
-user = os.environ["POSTGRES_USER"]
-password = os.environ["POSTGRES_PASS"]
-db = os.environ["POSTGRES_DB"]
-dbtype = "postgresql+psycopg2"
+if env == "DEV":
+    SQLALCHEMY_DATABASE_URI = "sqlite:///escucharr_testing.db"
+else:
+    SQLALCHEMY_DATABASE_URI = "sqlite:///escucharr_prod.db"
 
-SQLALCHEMY_DATABASE_URI = f"{dbtype}://{user}:{password }@{host}:{port}/{db}"
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URI, connect_args={"check_same_thread": False}
+)
+db_session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-engine = create_engine(SQLALCHEMY_DATABASE_URI)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+
+def get_session():
+    session = db_session()
+    try:
+        yield session
+    finally:
+        session.close()

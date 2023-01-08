@@ -3,16 +3,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import crud
 import models
-from db import SessionLocal, engine
+from db import get_session
 from schemas import (
-    ItemBaseSchema,
-    ItemSchema,
     SourceSchema,
     SourceBaseSchema,
+    SourceWithRelationships,
     TrackSchema,
     TrackBaseSchema,
     AlbumSchema,
     AlbumBaseSchema,
+    AlbumWithRelationships,
     WordSchema,
     WordBaseSchema,
     ProducerSchema,
@@ -21,8 +21,6 @@ from schemas import (
     TagBaseSchema,
 )
 
-models.Base.metadata.create_all(bind=engine)
-itemrouter = APIRouter(prefix="/items", tags=["items"])
 source_router = APIRouter(prefix="/sources", tags=["Sources"])
 track_router = APIRouter(prefix="/tracks", tags=["Tracks"])
 album_router = APIRouter(prefix="/albums", tags=["Albums"])
@@ -31,47 +29,13 @@ producer_router = APIRouter(prefix="/producers", tags=["Producers"])
 tag_router = APIRouter(prefix="/tags", tags=["Tags"])
 
 
-def get_session():
-    session = SessionLocal()
-    try:
-        yield session
-    finally:
-        session.close()
-
-
-@itemrouter.get("/", response_model=List[ItemSchema])
-def read_items(
-    skip: int = 0, limit: int = 100, session: Session = Depends(get_session)
-):
-    items = crud.get_items(session=session, skip=skip, limit=limit)
-    return items
-
-
-@itemrouter.get("/{id}", response_model=ItemSchema)
-def read_item(id: int, session: Session = Depends(get_session)):
-    item = crud.get_item_by_name(session=session, id=id)
-    if item is None:
-        raise HTTPException(status_code=404, detail="Item not found")
-    return item
-
-
-@itemrouter.post("/")
-def create_item(item: ItemBaseSchema, session: Session = Depends(get_session)):
-    item = crud.add_item(item=item, session=session)
-    return item
-
-
-# ******************************** SOURCE ROUTER *************************
-# These functions are called from the front end
-# either nothing or an id is sent by the front end
-# this data is sent (along with db session) to the db functions
-@source_router.get("/", response_model=List[SourceSchema])
+@source_router.get("/", response_model=List[SourceWithRelationships])
 def read_sources(session: Session = Depends(get_session)):
     sources = crud.SourceRepo().fetchAll(session=session)
     return sources
 
 
-@source_router.get("/{id}", response_model=SourceSchema)
+@source_router.get("/{id}", response_model=SourceWithRelationships)
 def read_source(id: int, session: Session = Depends(get_session)):
     source = crud.SourceRepo().fetchById(session=session, id=id)
     if source is None:
@@ -81,9 +45,50 @@ def read_source(id: int, session: Session = Depends(get_session)):
 
 @source_router.post("/", response_model=SourceSchema)
 def create_source(source: SourceBaseSchema, session: Session = Depends(get_session)):
+    # need to convert upload date to a datetime object
+    # is this the right place?
+    print("creating source:  ")
+    album_data = {}
+    if source.separate_album_per_video:
+        album_data["album_name"] = source.video_type + " " + source.episode_number
+    else:
+        album_data["album_name"] = source.video_type
+    album_data["track_prefix"] = "My Prefix:  "
+    album_data["path"] = "some/random/path/"
+    # check if album already exists
+    album = crud.AlbumRepo().fetchByAlbumName(
+        album_name=album_data["album_name"], session=session
+    )
+    if not album:
+        album_schema = AlbumBaseSchema(**album_data)
+        album_model = models.Album(**album_schema.dict())
+        album = crud.AlbumRepo().create(album=album_model, session=session)
+    # convert string date to datetime object
+
     source_model = models.Source(**source.dict())
-    source = crud.SourceRepo().create(session=session, source=source_model)
+    source_model.album_id = album.id
+    source = crud.SourceRepo().create(source=source_model, session=session)
     return source
+
+
+def create_album_from_source(source_dict: dict, session: Session):
+    source = SourceBaseSchema(**source_dict)
+    album_data = {}
+    if source.separate_album_per_video:
+        album_data["album_name"] = source.video_type + " " + source.episode_number
+    else:
+        album_data["album_name"] = source.video_type
+    album_data["track_prefix"] = "My Prefix:  "
+    album_data["path"] = "some/random/path/"
+    # check if album already exists
+    album = crud.AlbumRepo().fetchByAlbumName(
+        album_name=album_data["album_name"], session=session
+    )
+    if not album:
+        album_schema = AlbumBaseSchema(**album_data)
+        album_model = models.Album(**album_schema.dict())
+        album = crud.AlbumRepo().create(album=album_model, session=session)
+    return album.id
 
 
 @source_router.put("/{id}", response_model=SourceSchema)
@@ -164,13 +169,13 @@ def delete_track(id: int, session: Session = Depends(get_session)):
 # These functions are called from the front end
 # either nothing or an id is sent by the front end
 # this data is sent (along with db session) to the db functions
-@album_router.get("/", response_model=List[AlbumSchema])
+@album_router.get("/", response_model=List[AlbumWithRelationships])
 def read_albums(session: Session = Depends(get_session)):
     albums = crud.AlbumRepo().fetchAll(session=session)
     return albums
 
 
-@album_router.get("/{id}", response_model=AlbumSchema)
+@album_router.get("/{id}", response_model=AlbumWithRelationships)
 def read_album(id: int, session: Session = Depends(get_session)):
     album = crud.AlbumRepo().fetchById(session=session, id=id)
     if album is None:

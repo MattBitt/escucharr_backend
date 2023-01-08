@@ -1,28 +1,45 @@
 import crud
 import schemas
 import models
+from routers import create_album_from_source
 from faker import Faker
+from itertools import repeat
 
 from random import randrange
-from db import SessionLocal
+from db import db_session
+from datetime import datetime
 
 
 faker = Faker()
 
 
-def load_random_record(repo, schema, num_to_load):
-    rand = randrange(20) + 1
-    object_data = repo.fetchById(rand)
-    if object_data:
-        return object_data
-    return {"message": "Object not found"}
+def load_random_records(repo, schema, num_to_load):
+    object_list = []
+    session = db_session()
+    for i in repeat(None, num_to_load):
+        rand_record = randrange(num_to_load) + 1
+        object_data = repo().fetchById(rand_record, session=session)
+        if object_data:
+            object_list.append(object_data)
+        else:
+            return {"message": "Object not found"}
+    session.close()
+    return object_list
 
 
 def fake_source():
     source = {}
     source["url"] = faker.image_url()
     source["video_title"] = faker.text(max_nb_chars=40).title()
-    # source["upload_date"] = datetime.utcnow()
+    source["video_type"] = "Omegle Bars"
+    source["episode_number"] = str(faker.pyint(min_value=0, max_value=100)).zfill(3)
+    source["upload_date"] = faker.date_between(
+        start_date=datetime(2017, 1, 1)
+    ).strftime("%m-%d-%Y")
+    source["separate_album_per_video"] = faker.pybool()
+    if not source["separate_album_per_video"]:
+        source["episode_number"] = ""
+    source["album_id"] = create_album_from_source(source, db_session())
     return source
 
 
@@ -82,7 +99,7 @@ def add_to_db(data_to_add, model, repo, schema):
         data = schema(**obj)
         data_model = model(**data.dict())
         objects_to_insert.append(data_model)
-    session = SessionLocal()
+    session = db_session()
     repo().bulk_create(session, objects_to_insert)
     session.close()
 
@@ -90,16 +107,30 @@ def add_to_db(data_to_add, model, repo, schema):
 
 
 def delete_data(repo):
-    session = SessionLocal()
+    session = db_session()
     repo().bulk_delete(session)
     session.close()
 
 
 def data_exists(repo, num_records):
-    session = SessionLocal()
+    session = db_session()
     rows = repo().fetchAll(session)
     session.close()
     return len(rows) == num_records
+
+
+def assign_albums_to_sources():
+
+    num_albums = 20  # how many albums to randomly select
+    albums = load_random_records(crud.AlbumRepo, schemas.AlbumSchema, num_albums)
+    session = db_session()
+    for source in crud.SourceRepo().fetchAll(session=session):
+
+        rand_record = randrange(num_albums) + 1
+        source.album_id = albums[rand_record - 1].id
+        session.add(source)
+        session.commit()
+    session.close()
 
 
 def generate_fake_data():
@@ -108,7 +139,7 @@ def generate_fake_data():
             "repo": crud.SourceRepo,
             "model": models.Source,
             "schema": schemas.SourceBaseSchema,
-            "num_to_create": 50,
+            "num_to_create": 30,
             "fake_data_func": fake_source,
         },
         {
@@ -119,17 +150,10 @@ def generate_fake_data():
             "fake_data_func": fake_track,
         },
         {
-            "repo": crud.AlbumRepo,
-            "model": models.Album,
-            "schema": schemas.AlbumBaseSchema,
-            "num_to_create": 50,
-            "fake_data_func": fake_album_data,
-        },
-        {
             "repo": crud.WordRepo,
             "model": models.Word,
             "schema": schemas.WordBaseSchema,
-            "num_to_create": 100,
+            "num_to_create": 1000,
             "fake_data_func": fake_word_data,
         },
         {
@@ -152,7 +176,7 @@ def generate_fake_data():
             delete_data(model["repo"])
             objects = generate_data(model["num_to_create"], model["fake_data_func"])
             add_to_db(objects, model["model"], model["repo"], model["schema"])
-
+    # assign_albums_to_sources()
     # tracks = generate_data(100, fake_track)
     # for track in tracks:
     #     track_object = TrackSchema().load(track)
