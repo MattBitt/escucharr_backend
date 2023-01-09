@@ -69,3 +69,10 @@ def test_delete_source(client):
     assert response.status_code == 200
     response = client.get("/sources/" + str(result["id"]))
     assert response.status_code == 404
+
+
+def test_source_tracks(client):
+    response = client.get("/sources")
+    assert response.status_code == 200
+    result = list(response.json())[0]
+    assert len(result["tracks"]) > 0

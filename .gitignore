@@ -21,3 +21,5 @@ docs.zip
 archive.zip
 .env
 *.db
+programming_notes.txt
+run_pytest.sh

@@ -2,6 +2,8 @@ from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
+
+# from sqlalchemy.ext.associationproxy import association_proxy
 from db import Base
 
 
@@ -34,7 +36,7 @@ class Source(Base, CommonModel):  # type: ignore
     # Relationships
     # One to Many
     # files = db.relationship("File", back_populates="source")
-    # tracks = relationship("Track", back_populates="source")
+    tracks = relationship("Track", back_populates="source")
 
     # Many to One
     album_id = Column(Integer, ForeignKey("albums.id"))
@@ -67,17 +69,20 @@ class Track(Base, CommonModel):  # type: ignore
     # files = db.relationship("File", back_populates="track")
 
     # (Many to One)
-    # album_id = column(db.Integer, db.ForeignKey("album.id"))
-    # album = db.relationship("Album", back_populates="tracks")
-    # source_id = Column(Integer, ForeignKey("sources.id"))
-    # source = relationship("Source", back_populates="tracks")
+    album_id = Column(Integer, ForeignKey("albums.id"))
+    album = relationship("Album", back_populates="tracks")
+    source_id = Column(Integer, ForeignKey("sources.id"))
+    source = relationship("Source", back_populates="tracks")
 
     # (Many to Many)
     # artists = db.relationship("Artist", back_populates="track")
-    # producers = db.relationship("Producer", back_populates="track")
+
     # beats = db.relationship("Beat", back_populates="track")
-    # words = db.relationship("Word", back_populates="track")
-    # tags = db.relationship("Tag", back_populates="track")
+    words = relationship("Word", secondary="track_words", back_populates="tracks")
+    tags = relationship("Tag", secondary="track_tags", back_populates="tracks")
+    producers = relationship(
+        "Producer", secondary="track_producers", back_populates="tracks"
+    )
 
     def __repr__(self):
         return "TrackModel(id=%d,track_title=%s)" % (self.id, self.track_title)
@@ -94,7 +99,7 @@ class Album(Base, CommonModel):  # type: ignore
     #     # (One to Many)
 
     #     files = db.relationship("File", back_populates="album") # should have an image file
-    #     tracks = db.relationship("Track", back_populates="album")
+    tracks = relationship("Track", back_populates="album")
 
     def __repr__(self):
         return "Album(id=%d,album_name=%s)" % (self.id, self.album_name)
@@ -105,7 +110,7 @@ class Word(Base, CommonModel):  # type: ignore
 
     # Required
     word = Column(String(200))
-    # need to add sequence order to word_track table
+    tracks = relationship("Track", secondary="track_words", back_populates="words")
 
     def __repr__(self):
         return "Word(id=%d,word=%s)" % (self.id, self.word)
@@ -116,6 +121,9 @@ class Producer(Base, CommonModel):  # type: ignore
     # Required
     producer = Column(String(200), nullable=False)
     youtube_url = Column(String(200))
+    tracks = relationship(
+        "Track", secondary="track_producers", back_populates="producers"
+    )
 
     def __repr__(self):
         return "Producer(id=%d,producer=%s)" % (self.id, self.producer)
@@ -126,6 +134,28 @@ class Tag(Base, CommonModel):  # type: ignore
     # Required
     # need to add sequence order
     tag = Column(String(200))
+    tracks = relationship("Track", secondary="track_tags", back_populates="tags")
 
     def __repr__(self):
         return "Tag(id=%d,tag=%s)" % (self.id, self.tag)
+
+
+class TrackWord(Base):
+    __tablename__ = "track_words"
+    track_id = Column(ForeignKey("tracks.id"), primary_key=True)
+    word_id = Column(ForeignKey("words.id"), primary_key=True)
+    sequence_order = Column(Integer, nullable=False)
+
+
+class TrackTag(Base):
+    __tablename__ = "track_tags"
+    track_id = Column(ForeignKey("tracks.id"), primary_key=True)
+    tag_id = Column(ForeignKey("tags.id"), primary_key=True)
+    sequence_order = Column(Integer, nullable=False)
+
+
+class TrackProducer(Base):
+    __tablename__ = "track_producers"
+    track_id = Column(ForeignKey("tracks.id"), primary_key=True)
+    producer_id = Column(ForeignKey("producers.id"), primary_key=True)
+    sequence_order = Column(Integer, nullable=False)

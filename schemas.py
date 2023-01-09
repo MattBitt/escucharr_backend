@@ -15,7 +15,6 @@ class SourceBaseSchema(BaseModel):
 
     # when a source is created, it shouldn't have an album reference yet
     # after establishing the source, the album name/details should be created
-    # check the db and create or get id
     album_id: Optional[int]
 
     class Config:
@@ -41,9 +40,12 @@ class SourceSchema(SourceBaseSchema):
 
 class TrackBaseSchema(BaseModel):
     track_title: str
+    source_id: int
     start_time: Optional[int] = 0
     end_time: Optional[int] = 0
     plex_id: Optional[str] = ""
+    source_id: int
+    album_id: int
 
     class Config:
         orm_mode = True
@@ -123,7 +125,28 @@ class TagSchema(TagBaseSchema):
 
 class SourceWithRelationships(SourceSchema):
     album: AlbumSchema
+    tracks: List[TrackSchema]
 
 
 class AlbumWithRelationships(AlbumSchema):
     sources: List[SourceSchema]
+
+
+class TrackWithRelationships(TrackSchema):
+    source: SourceSchema
+    album: AlbumSchema
+    words: List[WordSchema]
+    tags: List[TagSchema]
+    producers: List[ProducerSchema]
+
+
+class WordWithReplationships(WordSchema):
+    tracks: List[TrackSchema]
+
+
+class TagWithReplationships(TagSchema):
+    tracks: List[TrackSchema]
+
+
+class ProducerWithReplationships(TagSchema):
+    tracks: List[TrackSchema]

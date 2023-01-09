@@ -2,7 +2,17 @@ from typing import List
 
 from sqlalchemy.orm import Session  # type: ignore
 
-from models import Source, Track, Album, Word, Producer, Tag
+from models import (
+    Source,
+    Track,
+    Album,
+    Word,
+    Producer,
+    Tag,
+    TrackWord,
+    TrackTag,
+    TrackProducer,
+)
 
 
 class SourceRepo:
@@ -37,6 +47,9 @@ class SourceRepo:
     def bulk_delete(self, session: Session):
         session.query(Source).delete()
         session.commit()
+
+    def count_rows(self, session: Session):
+        return session.query(Source).count()
 
 
 class TrackRepo:
@@ -119,6 +132,9 @@ class WordRepo:
     def fetchById(self, id: int, session: Session) -> Word:
         return session.query(Word).filter_by(id=id).first()
 
+    def fetchByWord(self, word: str, session: Session) -> Word:
+        return session.query(Word).filter_by(word=word).first()
+
     def fetchAll(self, session: Session) -> List[Word]:
         return session.query(Word).all()
 
@@ -143,6 +159,9 @@ class WordRepo:
         session.query(Word).delete()
         session.commit()
 
+    def count_rows(self, session: Session):
+        return session.query(Word).count()
+
 
 class ProducerRepo:
     def create(self, producer: Producer, session: Session):
@@ -152,6 +171,9 @@ class ProducerRepo:
 
     def fetchById(self, id: int, session: Session) -> Producer:
         return session.query(Producer).filter_by(id=id).first()
+
+    def fetchByProducer(self, producer: str, session: Session) -> Producer:
+        return session.query(Producer).filter_by(producer=producer).first()
 
     def fetchAll(self, session: Session) -> List[Producer]:
         return session.query(Producer).all()
@@ -177,6 +199,9 @@ class ProducerRepo:
         session.query(Producer).delete()
         session.commit()
 
+    def count_rows(self, session: Session):
+        return session.query(Producer).count()
+
 
 class TagRepo:
     def create(self, tag: Tag, session: Session):
@@ -186,6 +211,9 @@ class TagRepo:
 
     def fetchById(self, id: int, session: Session) -> Tag:
         return session.query(Tag).filter_by(id=id).first()
+
+    def fetchByTag(self, tag: str, session: Session) -> Tag:
+        return session.query(Tag).filter_by(tag=tag).first()
 
     def fetchAll(self, session: Session) -> List[Tag]:
         return session.query(Tag).all()
@@ -210,3 +238,31 @@ class TagRepo:
     def bulk_delete(self, session: Session):
         session.query(Tag).delete()
         session.commit()
+
+    def count_rows(self, session: Session):
+        return session.query(Tag).count()
+
+
+class TrackWordRepo:
+    def fetchLastWordSequence(self, track: Track, session: Session):
+        # words = session.query(Track).join(TrackWord, Track.words).all()
+        words = session.query(TrackWord).filter(TrackWord.track_id == track.id).all()
+        return len(words)
+
+
+class TrackTagRepo:
+    def fetchLastTagSequence(self, track: Track, session: Session):
+        # words = session.query(Track).join(TrackWord, Track.words).all()
+        tags = session.query(TrackTag).filter(TrackTag.track_id == track.id).all()
+        return len(tags)
+
+
+class TrackProducerRepo:
+    def fetchLastProducerSequence(self, track: Track, session: Session):
+        # words = session.query(Track).join(TrackWord, Track.words).all()
+        producers = (
+            session.query(TrackProducer)
+            .filter(TrackProducer.track_id == track.id)
+            .all()
+        )
+        return len(producers)

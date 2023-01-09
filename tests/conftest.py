@@ -1,16 +1,17 @@
 import pytest
 from fastapi.testclient import TestClient
 from main import app
-from db import Base, engine, db_session, get_session
 import sqlalchemy as sa
-
+from db import Base, engine, db_session, get_session
 from data_generator import generate_fake_data
+
 
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 generate_fake_data()
 
 
+# I think these 2 listeners can go away if i move to postgres...
 @sa.event.listens_for(engine, "connect")
 def do_connect(dbapi_connection, connection_record):
     # disable pysqlite's emitting of the BEGIN statement entirely.
@@ -30,6 +31,7 @@ def do_begin(conn):
 # Based on: https://docs.sqlalchemy.org/en/14/orm/session_transaction.html#joining-a-session-into-an-external-transaction-such-as-for-test-suites
 @pytest.fixture()
 def session():
+
     connection = engine.connect()
     transaction = connection.begin()
     session = db_session(bind=connection)
@@ -61,15 +63,3 @@ def client(session):
     app.dependency_overrides[get_session] = override_get_session
     yield TestClient(app)
     del app.dependency_overrides[get_session]
-
-
-# @pytest.fixture()
-# def test_db():
-
-#     print(engine)
-#     generate_fake_data()
-#     yield
-#     Base.metadata.drop_all(bind=engine)
-
-
-# client = TestClient(app)

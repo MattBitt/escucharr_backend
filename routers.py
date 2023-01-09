@@ -10,11 +10,13 @@ from schemas import (
     SourceWithRelationships,
     TrackSchema,
     TrackBaseSchema,
+    TrackWithRelationships,
     AlbumSchema,
     AlbumBaseSchema,
     AlbumWithRelationships,
     WordSchema,
     WordBaseSchema,
+    WordWithReplationships,
     ProducerSchema,
     ProducerBaseSchema,
     TagSchema,
@@ -45,34 +47,14 @@ def read_source(id: int, session: Session = Depends(get_session)):
 
 @source_router.post("/", response_model=SourceSchema)
 def create_source(source: SourceBaseSchema, session: Session = Depends(get_session)):
-    # need to convert upload date to a datetime object
-    # is this the right place?
-    print("creating source:  ")
-    album_data = {}
-    if source.separate_album_per_video:
-        album_data["album_name"] = source.video_type + " " + source.episode_number
-    else:
-        album_data["album_name"] = source.video_type
-    album_data["track_prefix"] = "My Prefix:  "
-    album_data["path"] = "some/random/path/"
-    # check if album already exists
-    album = crud.AlbumRepo().fetchByAlbumName(
-        album_name=album_data["album_name"], session=session
-    )
-    if not album:
-        album_schema = AlbumBaseSchema(**album_data)
-        album_model = models.Album(**album_schema.dict())
-        album = crud.AlbumRepo().create(album=album_model, session=session)
-    # convert string date to datetime object
-
+    album_id = get_or_create_album(source, session)
     source_model = models.Source(**source.dict())
-    source_model.album_id = album.id
+    source_model.album_id = album_id
     source = crud.SourceRepo().create(source=source_model, session=session)
     return source
 
 
-def create_album_from_source(source_dict: dict, session: Session):
-    source = SourceBaseSchema(**source_dict)
+def get_or_create_album(source: SourceBaseSchema, session: Session):
     album_data = {}
     if source.separate_album_per_video:
         album_data["album_name"] = source.video_type + " " + source.episode_number
@@ -119,13 +101,13 @@ def delete_source(id: int, session: Session = Depends(get_session)):
 # These functions are called from the front end
 # either nothing or an id is sent by the front end
 # this data is sent (along with db session) to the db functions
-@track_router.get("/", response_model=List[TrackSchema])
+@track_router.get("/", response_model=List[TrackWithRelationships])
 def read_tracks(session: Session = Depends(get_session)):
     tracks = crud.TrackRepo().fetchAll(session=session)
     return tracks
 
 
-@track_router.get("/{id}", response_model=TrackSchema)
+@track_router.get("/{id}", response_model=TrackWithRelationships)
 def read_track(id: int, session: Session = Depends(get_session)):
     track = crud.TrackRepo().fetchById(session=session, id=id)
     if track is None:
@@ -133,10 +115,141 @@ def read_track(id: int, session: Session = Depends(get_session)):
     return track
 
 
-@track_router.post("/", response_model=TrackSchema)
-def create_track(track: TrackBaseSchema, session: Session = Depends(get_session)):
+@track_router.post("/", response_model=TrackWithRelationships)
+def create_track(
+    track: TrackBaseSchema,
+    words: List[WordBaseSchema],
+    tags: List[TagBaseSchema],
+    producers: List[ProducerBaseSchema],
+    session: Session = Depends(get_session),
+):
+    word_list = create_word_list(words, session)
+    tag_list = create_tag_list(tags, session)
+    producer_list = create_producer_list(producers, session)
+
     track_model = models.Track(**track.dict())
     track = crud.TrackRepo().create(session=session, track=track_model)
+    track = add_words_to_track(track, word_list, session)
+    track = add_tags_to_track(track, tag_list, session)
+    track = add_producers_to_track(track, producer_list, session)
+    track = TrackWithRelationships.from_orm(track)
+    return track
+
+
+def create_word_list(words: List[WordBaseSchema], session: Session):
+    word_list = []
+    for word in words:
+        new_word = get_or_create_word(word, session)
+        word_list.append(new_word)
+    return word_list
+
+
+def create_tag_list(tags: List[TagBaseSchema], session: Session):
+    tag_list = []
+    for tag in tags:
+        new_tag = get_or_create_tag(tag, session)
+        tag_list.append(new_tag)
+    return tag_list
+
+
+def create_producer_list(producers: List[ProducerBaseSchema], session: Session):
+    producer_list = []
+    for producer in producers:
+        new_producer = get_or_create_producer(producer, session)
+        producer_list.append(new_producer)
+    return producer_list
+
+
+def get_or_create_word(word: WordBaseSchema, session: Session) -> models.Word:
+    new_word = crud.WordRepo().fetchByWord(word=word.word, session=session)
+    if new_word:
+        return new_word
+    else:
+        word_model = models.Word(**word.dict())
+        new_word = crud.WordRepo().create(word=word_model, session=session)
+        return new_word
+
+
+def get_or_create_tag(tag: TagBaseSchema, session: Session) -> models.Tag:
+    new_tag = crud.TagRepo().fetchByTag(tag=tag.tag, session=session)
+    if new_tag:
+        return new_tag
+    else:
+        tag_model = models.Tag(**tag.dict())
+        new_tag = crud.TagRepo().create(tag=tag_model, session=session)
+        return new_tag
+
+
+def get_or_create_producer(
+    producer: ProducerBaseSchema, session: Session
+) -> models.Producer:
+    new_producer = crud.ProducerRepo().fetchByProducer(
+        producer=producer.producer, session=session
+    )
+    if new_producer:
+        return new_producer
+    else:
+        producer_model = models.Producer(**producer.dict())
+        new_producer = crud.ProducerRepo().create(
+            producer=producer_model, session=session
+        )
+        return new_producer
+
+
+def add_words_to_track(
+    track: models.Track, words: List[models.Word], session: Session
+) -> TrackBaseSchema:
+    for word in words:
+        if word and word not in track.words:
+            next_word_sequence_number = (
+                crud.TrackWordRepo().fetchLastWordSequence(track, session) + 1
+            )
+            track_word = models.TrackWord(
+                track_id=track.id,
+                word_id=word.id,
+                sequence_order=next_word_sequence_number,
+            )
+            session.add_all([track, track_word])
+            session.commit()
+
+    return track
+
+
+def add_tags_to_track(
+    track: models.Track, tags: List[models.Tag], session: Session
+) -> TrackBaseSchema:
+    for tag in tags:
+        if tag and tag not in track.tags:
+            next_tag_sequence_number = (
+                crud.TrackTagRepo().fetchLastTagSequence(track, session) + 1
+            )
+            track_tag = models.TrackTag(
+                track_id=track.id,
+                tag_id=tag.id,
+                sequence_order=next_tag_sequence_number,
+            )
+            session.add_all([track, track_tag])
+            session.commit()
+
+    return track
+
+
+def add_producers_to_track(
+    track: models.Track, producers: List[models.Producer], session: Session
+) -> TrackBaseSchema:
+    for producer in producers:
+        if producer and producer not in track.producers:
+            next_producer_sequence_number = (
+                crud.TrackProducerRepo().fetchLastProducerSequence(track, session) + 1
+            )
+            track_producer = models.TrackProducer(
+                track_id=track.id,
+                producer_id=producer.id,
+                sequence_order=next_producer_sequence_number,
+            )
+            session.add_all([track, track_producer])
+            session.commit()
+
     return track
 
 
@@ -219,13 +332,13 @@ def delete_album(id: int, session: Session = Depends(get_session)):
 # These functions are called from the front end
 # either nothing or an id is sent by the front end
 # this data is sent (along with db session) to the db functions
-@word_router.get("/", response_model=List[WordSchema])
+@word_router.get("/", response_model=List[WordWithReplationships])
 def read_words(session: Session = Depends(get_session)):
     words = crud.WordRepo().fetchAll(session=session)
     return words
 
 
-@word_router.get("/{id}", response_model=WordSchema)
+@word_router.get("/{id}", response_model=WordWithReplationships)
 def read_word(id: int, session: Session = Depends(get_session)):
     word = crud.WordRepo().fetchById(session=session, id=id)
     if word is None:
