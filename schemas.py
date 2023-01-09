@@ -123,6 +123,20 @@ class TagSchema(TagBaseSchema):
         orm_mode = True
 
 
+class BeatBaseSchema(BaseModel):
+    beat_name: str
+
+    class Config:
+        orm_mode = True
+
+
+class BeatSchema(BeatBaseSchema):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+
 class SourceWithRelationships(SourceSchema):
     album: AlbumSchema
     tracks: List[TrackSchema]
@@ -138,15 +152,20 @@ class TrackWithRelationships(TrackSchema):
     words: List[WordSchema]
     tags: List[TagSchema]
     producers: List[ProducerSchema]
+    beats: List[BeatSchema]
 
 
-class WordWithReplationships(WordSchema):
+class WordWithRelationships(WordSchema):
     tracks: List[TrackSchema]
 
 
-class TagWithReplationships(TagSchema):
+class TagWithRelationships(TagSchema):
     tracks: List[TrackSchema]
 
 
-class ProducerWithReplationships(TagSchema):
+class ProducerWithRelationships(TagSchema):
+    tracks: List[TrackSchema]
+
+
+class BeatWithRelationships(TagSchema):
     tracks: List[TrackSchema]

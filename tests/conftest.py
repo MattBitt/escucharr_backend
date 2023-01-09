@@ -3,12 +3,9 @@ from fastapi.testclient import TestClient
 from main import app
 import sqlalchemy as sa
 from db import Base, engine, db_session, get_session
-from data_generator import generate_fake_data
 
 
-Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
-generate_fake_data()
 
 
 # I think these 2 listeners can go away if i move to postgres...

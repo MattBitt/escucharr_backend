@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from db import Base, engine
+from my_logging import setup_logging
 
 from routers import (
     source_router,
@@ -10,9 +11,10 @@ from routers import (
     word_router,
     producer_router,
     tag_router,
+    beat_router,
 )
 
-from data_generator import generate_fake_data
+logger = setup_logging()
 
 
 app = FastAPI()
@@ -38,6 +40,7 @@ app.include_router(album_router)
 app.include_router(word_router)
 app.include_router(producer_router)
 app.include_router(tag_router)
+app.include_router(beat_router)
 
 
 # Should include a health check for the postgres db
@@ -52,5 +55,4 @@ async def read_main():
 
 if __name__ == "__main__":
     Base.metadata.create_all(bind=engine)
-    generate_fake_data()
     uvicorn.run("main:app", port=9000, reload=True)

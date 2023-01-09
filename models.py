@@ -50,7 +50,7 @@ class Source(Base, CommonModel):  # type: ignore
         )
 
 
-class Track(Base, CommonModel):  # type: ignore
+class Track(Base, CommonModel):
     __tablename__ = "tracks"
     # Required
     track_title = Column(String(200), nullable=False)
@@ -83,12 +83,13 @@ class Track(Base, CommonModel):  # type: ignore
     producers = relationship(
         "Producer", secondary="track_producers", back_populates="tracks"
     )
+    beats = relationship("Beat", secondary="track_beats", back_populates="tracks")
 
     def __repr__(self):
         return "TrackModel(id=%d,track_title=%s)" % (self.id, self.track_title)
 
 
-class Album(Base, CommonModel):  # type: ignore
+class Album(Base, CommonModel):
     __tablename__ = "albums"
     # Init
     album_name = Column(String(200), nullable=False, unique=True)
@@ -105,7 +106,7 @@ class Album(Base, CommonModel):  # type: ignore
         return "Album(id=%d,album_name=%s)" % (self.id, self.album_name)
 
 
-class Word(Base, CommonModel):  # type: ignore
+class Word(Base, CommonModel):
     __tablename__ = "words"
 
     # Required
@@ -116,7 +117,7 @@ class Word(Base, CommonModel):  # type: ignore
         return "Word(id=%d,word=%s)" % (self.id, self.word)
 
 
-class Producer(Base, CommonModel):  # type: ignore
+class Producer(Base, CommonModel):
     __tablename__ = "producers"
     # Required
     producer = Column(String(200), nullable=False)
@@ -127,6 +128,19 @@ class Producer(Base, CommonModel):  # type: ignore
 
     def __repr__(self):
         return "Producer(id=%d,producer=%s)" % (self.id, self.producer)
+
+
+class Beat(Base, CommonModel):
+    __tablename__ = "beats"
+    # Required
+    beat_name = Column(String(200), nullable=False)
+
+    # producer = Column(String(200), nullable=False)
+
+    tracks = relationship("Track", secondary="track_beats", back_populates="beats")
+
+    def __repr__(self):
+        return "Beat(id=%d,beat_name=%s)" % (self.id, self.beat_name)
 
 
 class Tag(Base, CommonModel):  # type: ignore
@@ -158,4 +172,11 @@ class TrackProducer(Base):
     __tablename__ = "track_producers"
     track_id = Column(ForeignKey("tracks.id"), primary_key=True)
     producer_id = Column(ForeignKey("producers.id"), primary_key=True)
+    sequence_order = Column(Integer, nullable=False)
+
+
+class TrackBeat(Base):
+    __tablename__ = "track_beats"
+    track_id = Column(ForeignKey("tracks.id"), primary_key=True)
+    beat_id = Column(ForeignKey("beats.id"), primary_key=True)
     sequence_order = Column(Integer, nullable=False)

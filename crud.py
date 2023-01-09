@@ -12,6 +12,8 @@ from models import (
     TrackWord,
     TrackTag,
     TrackProducer,
+    TrackBeat,
+    Beat,
 )
 
 
@@ -243,6 +245,46 @@ class TagRepo:
         return session.query(Tag).count()
 
 
+class BeatRepo:
+    def create(self, beat: Beat, session: Session):
+        session.add(beat)
+        session.commit()
+        return beat
+
+    def fetchById(self, id: int, session: Session) -> Beat:
+        return session.query(Beat).filter_by(id=id).first()
+
+    def fetchByBeat(self, beat: str, session: Session) -> Beat:
+        return session.query(Beat).filter_by(beat_name=beat).first()
+
+    def fetchAll(self, session: Session) -> List[Beat]:
+        return session.query(Beat).all()
+
+    def delete(self, id: int, session: Session) -> None:
+        beat = session.query(Beat).filter_by(id=id).first()
+        session.delete(beat)
+        session.commit()
+
+    def update(
+        self,
+        beat_data: Beat,
+        session: Session,
+    ):
+        session.merge(beat_data)
+        session.commit()
+
+    def bulk_create(self, session: Session, beats_list):
+        session.bulk_save_objects(beats_list)
+        session.commit()
+
+    def bulk_delete(self, session: Session):
+        session.query(Beat).delete()
+        session.commit()
+
+    def count_rows(self, session: Session):
+        return session.query(Beat).count()
+
+
 class TrackWordRepo:
     def fetchLastWordSequence(self, track: Track, session: Session):
         # words = session.query(Track).join(TrackWord, Track.words).all()
@@ -266,3 +308,10 @@ class TrackProducerRepo:
             .all()
         )
         return len(producers)
+
+
+class TrackBeatRepo:
+    def fetchLastBeatSequence(self, track: Track, session: Session):
+        # words = session.query(Track).join(TrackWord, Track.words).all()
+        beats = session.query(TrackBeat).filter(TrackBeat.track_id == track.id).all()
+        return len(beats)

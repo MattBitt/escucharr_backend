@@ -16,11 +16,13 @@ from schemas import (
     AlbumWithRelationships,
     WordSchema,
     WordBaseSchema,
-    WordWithReplationships,
+    WordWithRelationships,
     ProducerSchema,
     ProducerBaseSchema,
     TagSchema,
     TagBaseSchema,
+    BeatBaseSchema,
+    BeatSchema,
 )
 
 source_router = APIRouter(prefix="/sources", tags=["Sources"])
@@ -29,6 +31,7 @@ album_router = APIRouter(prefix="/albums", tags=["Albums"])
 word_router = APIRouter(prefix="/words", tags=["Words"])
 producer_router = APIRouter(prefix="/producers", tags=["Producers"])
 tag_router = APIRouter(prefix="/tags", tags=["Tags"])
+beat_router = APIRouter(prefix="/beats", tags=["Beats"])
 
 
 @source_router.get("/", response_model=List[SourceWithRelationships])
@@ -101,7 +104,7 @@ def delete_source(id: int, session: Session = Depends(get_session)):
 # These functions are called from the front end
 # either nothing or an id is sent by the front end
 # this data is sent (along with db session) to the db functions
-@track_router.get("/", response_model=List[TrackWithRelationships])
+@track_router.get("/", response_model=List[TrackSchema])
 def read_tracks(session: Session = Depends(get_session)):
     tracks = crud.TrackRepo().fetchAll(session=session)
     return tracks
@@ -121,17 +124,20 @@ def create_track(
     words: List[WordBaseSchema],
     tags: List[TagBaseSchema],
     producers: List[ProducerBaseSchema],
+    beats: List[BeatBaseSchema],
     session: Session = Depends(get_session),
 ):
     word_list = create_word_list(words, session)
     tag_list = create_tag_list(tags, session)
     producer_list = create_producer_list(producers, session)
+    beat_list = create_beat_list(beats, session)
 
     track_model = models.Track(**track.dict())
     track = crud.TrackRepo().create(session=session, track=track_model)
     track = add_words_to_track(track, word_list, session)
     track = add_tags_to_track(track, tag_list, session)
     track = add_producers_to_track(track, producer_list, session)
+    track = add_beats_to_track(track, beat_list, session)
     track = TrackWithRelationships.from_orm(track)
     return track
 
@@ -160,6 +166,14 @@ def create_producer_list(producers: List[ProducerBaseSchema], session: Session):
     return producer_list
 
 
+def create_beat_list(beats: List[BeatBaseSchema], session: Session):
+    beat_list = []
+    for beat in beats:
+        new_beat = get_or_create_beat(beat, session)
+        beat_list.append(new_beat)
+    return beat_list
+
+
 def get_or_create_word(word: WordBaseSchema, session: Session) -> models.Word:
     new_word = crud.WordRepo().fetchByWord(word=word.word, session=session)
     if new_word:
@@ -178,6 +192,16 @@ def get_or_create_tag(tag: TagBaseSchema, session: Session) -> models.Tag:
         tag_model = models.Tag(**tag.dict())
         new_tag = crud.TagRepo().create(tag=tag_model, session=session)
         return new_tag
+
+
+def get_or_create_beat(beat: BeatBaseSchema, session: Session) -> models.Beat:
+    new_beat = crud.BeatRepo().fetchByBeat(beat=beat.beat_name, session=session)
+    if new_beat:
+        return new_beat
+    else:
+        beat_model = models.Beat(**beat.dict())
+        new_beat = crud.BeatRepo().create(beat=beat_model, session=session)
+        return new_beat
 
 
 def get_or_create_producer(
@@ -229,6 +253,25 @@ def add_tags_to_track(
                 sequence_order=next_tag_sequence_number,
             )
             session.add_all([track, track_tag])
+            session.commit()
+
+    return track
+
+
+def add_beats_to_track(
+    track: models.Track, beats: List[models.Beat], session: Session
+) -> TrackBaseSchema:
+    for beat in beats:
+        if beat and beat not in track.beats:
+            next_beat_sequence_number = (
+                crud.TrackBeatRepo().fetchLastBeatSequence(track, session) + 1
+            )
+            track_beat = models.TrackBeat(
+                track_id=track.id,
+                beat_id=beat.id,
+                sequence_order=next_beat_sequence_number,
+            )
+            session.add_all([track, track_beat])
             session.commit()
 
     return track
@@ -332,13 +375,13 @@ def delete_album(id: int, session: Session = Depends(get_session)):
 # These functions are called from the front end
 # either nothing or an id is sent by the front end
 # this data is sent (along with db session) to the db functions
-@word_router.get("/", response_model=List[WordWithReplationships])
+@word_router.get("/", response_model=List[WordWithRelationships])
 def read_words(session: Session = Depends(get_session)):
     words = crud.WordRepo().fetchAll(session=session)
     return words
 
 
-@word_router.get("/{id}", response_model=WordWithReplationships)
+@word_router.get("/{id}", response_model=WordWithRelationships)
 def read_word(id: int, session: Session = Depends(get_session)):
     word = crud.WordRepo().fetchById(session=session, id=id)
     if word is None:
@@ -476,3 +519,51 @@ def delete_tag(id: int, session: Session = Depends(get_session)):
 
 
 # ******************************** TAG ROUTER *************************
+
+
+# ******************************** BEAT ROUTER *************************
+# These functions are called from the front end
+# either nothing or an id is sent by the front end
+# this data is sent (along with db session) to the db functions
+@beat_router.get("/", response_model=List[BeatSchema])
+def read_beats(session: Session = Depends(get_session)):
+    beats = crud.BeatRepo().fetchAll(session=session)
+    return beats
+
+
+@beat_router.get("/{id}", response_model=BeatSchema)
+def read_beat(id: int, session: Session = Depends(get_session)):
+    beat = crud.BeatRepo().fetchById(session=session, id=id)
+    if beat is None:
+        raise HTTPException(status_code=404, detail="Beat not found")
+    return beat
+
+
+@beat_router.post("/", response_model=BeatSchema)
+def create_beat(beat: BeatBaseSchema, session: Session = Depends(get_session)):
+    beat_model = models.Beat(**beat.dict())
+    beat = crud.BeatRepo().create(session=session, beat=beat_model)
+    return beat
+
+
+@beat_router.put("/{id}", response_model=BeatSchema)
+def update_beat(beat: BeatSchema, session: Session = Depends(get_session)):
+    updated_beat = crud.BeatRepo().fetchById(id=beat.id, session=session)
+    if updated_beat:
+        updated_beat.beat = beat.beat
+        beat = crud.BeatRepo().update(beat_data=updated_beat, session=session)
+        beat = crud.BeatRepo().fetchById(id=updated_beat.id, session=session)
+        return beat
+    return {"message": "beat not found"}, 404
+
+
+@beat_router.delete("/{id}")
+def delete_beat(id: int, session: Session = Depends(get_session)):
+    beat_data = crud.BeatRepo().fetchById(id=id, session=session)
+    if beat_data:
+        crud.BeatRepo().delete(id=id, session=session)
+        return {"message": "beat deleted successfully"}, 200
+    return {"message": "beat not found"}, 404
+
+
+# ******************************** BEAT ROUTER *************************

@@ -7,7 +7,7 @@ from faker import Faker
 from random import randrange
 from db import Base, engine, db_session
 from datetime import datetime
-
+from main import logger
 
 faker = Faker()
 
@@ -75,6 +75,12 @@ def fake_producer_data():
     producer["producer"] = faker.name()
     producer["youtube_url"] = faker.image_url()
     return producer
+
+
+def fake_beat_data():
+    beat = {}
+    beat["beat_name"] = faker.text(max_nb_chars=20).title()
+    return beat
 
 
 def fake_tag_data():
@@ -152,7 +158,7 @@ def generate_fake_data():
             "repo": crud.WordRepo,
             "model": models.Word,
             "schema": schemas.WordBaseSchema,
-            "num_to_create": 500,
+            "num_to_create": 200,
             "fake_data_func": fake_word_data,
         },
         {
@@ -169,9 +175,17 @@ def generate_fake_data():
             "num_to_create": 100,
             "fake_data_func": fake_tag_data,
         },
+        {
+            "repo": crud.BeatRepo,
+            "model": models.Beat,
+            "schema": schemas.BeatBaseSchema,
+            "num_to_create": 20,
+            "fake_data_func": fake_beat_data,
+        },
     ]
     # generates tables of data for the models above
     for model in model_list:
+        logger.info("Generating fake data for {}".format(model["repo"]))
         if not data_exists(model["repo"], model["num_to_create"]):
             delete_data(model["repo"])
             objects = generate_data(model["num_to_create"], model["fake_data_func"])
@@ -180,8 +194,10 @@ def generate_fake_data():
     # now generate relationships (many to many)
 
     # track_words
+    logger.info("Generating fake data for individual tracks")
     session = db_session()
     for track in crud.TrackRepo().fetchAll(session):
+        logger.debug("Adding words to track")
         num_words = randrange(6) + 1  # choose up to 6 words per track
         for i in range(num_words):
             rand_word = load_random_record(crud.WordRepo)
@@ -192,7 +208,7 @@ def generate_fake_data():
                 )
                 session.add_all([track, track_word])
                 session.commit()
-
+        logger.debug("Adding tags to track")
         num_tags = randrange(4) + 1  # choose up to 4 tags per track
         for i in range(num_tags):
             rand_tag = load_random_record(crud.TagRepo)
@@ -204,6 +220,7 @@ def generate_fake_data():
                 session.add_all([track, track_tag])
                 session.commit()
 
+        logger.debug("Adding producers to track")
         num_producers = randrange(3)  # choose up to 3 producers per track
         for i in range(num_producers):
             rand_producer = load_random_record(crud.ProducerRepo)
@@ -214,14 +231,28 @@ def generate_fake_data():
                 )
                 session.add_all([track, track_producer])
                 session.commit()
+
+        logger.debug("Adding beats to track")
+        num_beats = randrange(2)  # choose up to 3 beats per track
+        for i in range(num_beats):
+            rand_beat = load_random_record(crud.BeatRepo)
+            beat = crud.BeatRepo().fetchById(rand_beat, session)
+            if beat not in track.beats:
+                track_beat = models.TrackBeat(
+                    track_id=track.id, beat_id=beat.id, sequence_order=i + 1
+                )
+                session.add_all([track, track_beat])
+                session.commit()
     session.close()
 
 
 if __name__ == "__main__":
+    logger.info("Ready to generate fake data for the DB")
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     generate_fake_data()
-    session = db_session()
-    track = crud.TrackRepo().fetchById(12, session)
-    print(track)
-    session.close()
+    logger.info("Data successfully generated")
+    # session = db_session()
+    # track = crud.TrackRepo().fetchById(12, session)
+    # print(track)
+    # session.close()
