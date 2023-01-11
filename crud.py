@@ -6,6 +6,7 @@ from models import (
     Source,
     Track,
     Album,
+    Artist,
     Word,
     Producer,
     Tag,
@@ -13,6 +14,7 @@ from models import (
     TrackTag,
     TrackProducer,
     TrackBeat,
+    TrackArtist,
     Beat,
 )
 
@@ -285,6 +287,46 @@ class BeatRepo:
         return session.query(Beat).count()
 
 
+class ArtistRepo:
+    def create(self, artist: Artist, session: Session):
+        session.add(artist)
+        session.commit()
+        return artist
+
+    def fetchById(self, id: int, session: Session) -> Artist:
+        return session.query(Artist).filter_by(id=id).first()
+
+    def fetchByArtist(self, artist: str, session: Session) -> Artist:
+        return session.query(Artist).filter_by(artist_name=artist).first()
+
+    def fetchAll(self, session: Session) -> List[Artist]:
+        return session.query(Artist).all()
+
+    def delete(self, id: int, session: Session) -> None:
+        artist = session.query(Artist).filter_by(id=id).first()
+        session.delete(artist)
+        session.commit()
+
+    def update(
+        self,
+        artist_data: Artist,
+        session: Session,
+    ):
+        session.merge(artist_data)
+        session.commit()
+
+    def bulk_create(self, session: Session, artists_list):
+        session.bulk_save_objects(artists_list)
+        session.commit()
+
+    def bulk_delete(self, session: Session):
+        session.query(Artist).delete()
+        session.commit()
+
+    def count_rows(self, session: Session):
+        return session.query(Artist).count()
+
+
 class TrackWordRepo:
     def fetchLastWordSequence(self, track: Track, session: Session):
         # words = session.query(Track).join(TrackWord, Track.words).all()
@@ -315,3 +357,12 @@ class TrackBeatRepo:
         # words = session.query(Track).join(TrackWord, Track.words).all()
         beats = session.query(TrackBeat).filter(TrackBeat.track_id == track.id).all()
         return len(beats)
+
+
+class TrackArtistRepo:
+    def fetchLastArtistSequence(self, track: Track, session: Session):
+        # words = session.query(Track).join(TrackWord, Track.words).all()
+        artists = (
+            session.query(TrackArtist).filter(TrackArtist.track_id == track.id).all()
+        )
+        return len(artists)

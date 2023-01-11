@@ -77,6 +77,12 @@ def fake_producer_data():
     return producer
 
 
+def fake_artist_data():
+    artist = {}
+    artist["artist"] = faker.name()
+    return artist
+
+
 def fake_beat_data():
     beat = {}
     beat["beat_name"] = faker.text(max_nb_chars=20).title()
@@ -182,6 +188,13 @@ def generate_fake_data():
             "num_to_create": 20,
             "fake_data_func": fake_beat_data,
         },
+        {
+            "repo": crud.ArtistRepo,
+            "model": models.Artist,
+            "schema": schemas.ArtistBaseSchema,
+            "num_to_create": 10,
+            "fake_data_func": fake_artist_data,
+        },
     ]
     # generates tables of data for the models above
     for model in model_list:
@@ -243,6 +256,19 @@ def generate_fake_data():
                 )
                 session.add_all([track, track_beat])
                 session.commit()
+
+        logger.debug("Adding artists to track")
+        num_artists = randrange(2)  # choose up to 3 artists per track
+        for i in range(num_artists):
+            rand_artist = load_random_record(crud.ArtistRepo)
+            artist = crud.ArtistRepo().fetchById(rand_artist, session)
+            if artist not in track.artists:
+                track_artist = models.TrackArtist(
+                    track_id=track.id, artist_id=artist.id, sequence_order=i + 1
+                )
+                session.add_all([track, track_artist])
+                session.commit()
+
     session.close()
 
 

@@ -23,6 +23,8 @@ from schemas import (
     TagBaseSchema,
     BeatBaseSchema,
     BeatSchema,
+    ArtistSchema,
+    ArtistBaseSchema,
 )
 
 source_router = APIRouter(prefix="/sources", tags=["Sources"])
@@ -32,6 +34,7 @@ word_router = APIRouter(prefix="/words", tags=["Words"])
 producer_router = APIRouter(prefix="/producers", tags=["Producers"])
 tag_router = APIRouter(prefix="/tags", tags=["Tags"])
 beat_router = APIRouter(prefix="/beats", tags=["Beats"])
+artist_router = APIRouter(prefix="/artists", tags=["Artists"])
 
 
 @source_router.get("/", response_model=List[SourceWithRelationships])
@@ -550,7 +553,7 @@ def create_beat(beat: BeatBaseSchema, session: Session = Depends(get_session)):
 def update_beat(beat: BeatSchema, session: Session = Depends(get_session)):
     updated_beat = crud.BeatRepo().fetchById(id=beat.id, session=session)
     if updated_beat:
-        updated_beat.beat = beat.beat
+        updated_beat.beat_name = beat.beat_name
         beat = crud.BeatRepo().update(beat_data=updated_beat, session=session)
         beat = crud.BeatRepo().fetchById(id=updated_beat.id, session=session)
         return beat
@@ -567,3 +570,51 @@ def delete_beat(id: int, session: Session = Depends(get_session)):
 
 
 # ******************************** BEAT ROUTER *************************
+
+
+# ******************************** ARTIST ROUTER *************************
+# These functions are called from the front end
+# either nothing or an id is sent by the front end
+# this data is sent (along with db session) to the db functions
+@artist_router.get("/", response_model=List[ArtistSchema])
+def read_artists(session: Session = Depends(get_session)):
+    artists = crud.ArtistRepo().fetchAll(session=session)
+    return artists
+
+
+@artist_router.get("/{id}", response_model=ArtistSchema)
+def read_artist(id: int, session: Session = Depends(get_session)):
+    artist = crud.ArtistRepo().fetchById(session=session, id=id)
+    if artist is None:
+        raise HTTPException(status_code=404, detail="Artist not found")
+    return artist
+
+
+@artist_router.post("/", response_model=ArtistSchema)
+def create_artist(artist: ArtistBaseSchema, session: Session = Depends(get_session)):
+    artist_model = models.Artist(**artist.dict())
+    artist = crud.ArtistRepo().create(session=session, artist=artist_model)
+    return artist
+
+
+@artist_router.put("/{id}", response_model=ArtistSchema)
+def update_artist(artist: ArtistSchema, session: Session = Depends(get_session)):
+    updated_artist = crud.ArtistRepo().fetchById(id=artist.id, session=session)
+    if updated_artist:
+        updated_artist.artist = artist.artist
+        artist = crud.ArtistRepo().update(artist_data=updated_artist, session=session)
+        artist = crud.ArtistRepo().fetchById(id=updated_artist.id, session=session)
+        return artist
+    return {"message": "artist not found"}, 404
+
+
+@artist_router.delete("/{id}")
+def delete_artist(id: int, session: Session = Depends(get_session)):
+    artist_data = crud.ArtistRepo().fetchById(id=id, session=session)
+    if artist_data:
+        crud.ArtistRepo().delete(id=id, session=session)
+        return {"message": "artist deleted successfully"}, 200
+    return {"message": "artist not found"}, 404
+
+
+# ******************************** ARTIST ROUTER *************************

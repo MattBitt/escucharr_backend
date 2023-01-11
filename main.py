@@ -12,6 +12,7 @@ from routers import (
     producer_router,
     tag_router,
     beat_router,
+    artist_router,
 )
 
 logger = setup_logging()
@@ -41,6 +42,7 @@ app.include_router(word_router)
 app.include_router(producer_router)
 app.include_router(tag_router)
 app.include_router(beat_router)
+app.include_router(artist_router)
 
 
 # Should include a health check for the postgres db

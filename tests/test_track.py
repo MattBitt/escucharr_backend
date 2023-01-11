@@ -27,6 +27,11 @@ def test_create_track(client):
             {"beat_name": "Beat #2"},
             {"beat_name": "Beat #3"},
         ],
+        "artists": [
+            {"artist": "Harry Mack"},
+            {"artist": "Marcus Veltri"},
+            {"artist": "Beardyman"},
+        ],
     }
     response = client.post("/tracks/", json=request)
     assert response.status_code == 200

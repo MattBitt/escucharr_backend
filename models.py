@@ -75,9 +75,7 @@ class Track(Base, CommonModel):
     source = relationship("Source", back_populates="tracks")
 
     # (Many to Many)
-    # artists = db.relationship("Artist", back_populates="track")
-
-    # beats = db.relationship("Beat", back_populates="track")
+    artists = relationship("Artist", secondary="track_artists", back_populates="tracks")
     words = relationship("Word", secondary="track_words", back_populates="tracks")
     tags = relationship("Tag", secondary="track_tags", back_populates="tracks")
     producers = relationship(
@@ -154,6 +152,17 @@ class Tag(Base, CommonModel):  # type: ignore
         return "Tag(id=%d,tag=%s)" % (self.id, self.tag)
 
 
+class Artist(Base, CommonModel):  # type: ignore
+    __tablename__ = "artists"
+    # Required
+    # need to add sequence order
+    artist = Column(String(200))
+    tracks = relationship("Track", secondary="track_artists", back_populates="artists")
+
+    def __repr__(self):
+        return "Artist(id=%d,artist=%s)" % (self.id, self.artist)
+
+
 class TrackWord(Base):
     __tablename__ = "track_words"
     track_id = Column(ForeignKey("tracks.id"), primary_key=True)
@@ -179,4 +188,11 @@ class TrackBeat(Base):
     __tablename__ = "track_beats"
     track_id = Column(ForeignKey("tracks.id"), primary_key=True)
     beat_id = Column(ForeignKey("beats.id"), primary_key=True)
+    sequence_order = Column(Integer, nullable=False)
+
+
+class TrackArtist(Base):
+    __tablename__ = "track_artists"
+    track_id = Column(ForeignKey("tracks.id"), primary_key=True)
+    artist_id = Column(ForeignKey("artists.id"), primary_key=True)
     sequence_order = Column(Integer, nullable=False)
