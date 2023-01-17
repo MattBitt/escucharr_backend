@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from db import Base, engine
 from my_logging import setup_logging
+from configs import cnf
+from source_data import update_sources_in_db, download_sources, verify_files_exist
 
 from routers import (
     source_router,
@@ -15,11 +17,8 @@ from routers import (
     artist_router,
 )
 
-logger = setup_logging()
-
 
 app = FastAPI()
-
 
 origins = [
     "http://localhost",
@@ -34,7 +33,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 app.include_router(source_router)
 app.include_router(track_router)
 app.include_router(album_router)
@@ -44,17 +42,26 @@ app.include_router(tag_router)
 app.include_router(beat_router)
 app.include_router(artist_router)
 
-
 # Should include a health check for the postgres db
 # had a situation where nothing was working, because the db
 # needed to be restarted
 
 
-@app.get("/")
-async def read_main():
-    return {"msg": "Hello World"}
+# @app.get("/")
+# async def read_main():
+#     return {"msg": "Hello World"}
 
 
 if __name__ == "__main__":
+    logger = setup_logging()
+    logger.success("Starting program")
+    logger.error("Log Level is currently {}".format(cnf.LOG_LEVEL))
     Base.metadata.create_all(bind=engine)
+
+    if not (cnf.ENV_STATE == "dev" and not cnf.APP_CONFIG.import_during_testing):
+        logger.info("Downloading all sources from specified channels")
+        update_sources_in_db()
+    if not (cnf.ENV_STATE == "dev" and not cnf.APP_CONFIG.download_during_testing):
+        download_sources()
+    verify_files_exist()
     uvicorn.run("main:app", port=9000, reload=True)

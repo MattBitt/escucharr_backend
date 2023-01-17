@@ -48,10 +48,11 @@ ENV PYTHONUNBUFFERED 1
 COPY ./requirements.txt /usr/app/requirements.txt
 
 # install dependencies
+
 RUN set -eux \
     && apk add --no-cache --virtual .build-deps build-base \
     openssl-dev libffi-dev gcc musl-dev python3-dev \
-    postgresql-dev bash git \
+    postgresql-dev bash git ffmpeg\
     && pip install --upgrade pip setuptools wheel \
     && pip install -r /usr/app/requirements.txt \
     && rm -rf /root/.cache/pip

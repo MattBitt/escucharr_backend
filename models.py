@@ -1,4 +1,11 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    DateTime,
+    Boolean,
+    ForeignKey,
+)  # type ignore
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
@@ -24,10 +31,11 @@ class Source(Base, CommonModel):  # type: ignore
     # Required
     url = Column(String(80), nullable=False)
     video_title = Column(String(80), nullable=False)
-    video_type = Column(String(80), nullable=False)
-    episode_number = Column(String(80), nullable=False)
+    # video_type = Column(String(80), nullable=False)
     upload_date = Column(DateTime, nullable=False)
-    separate_album_per_video = Column(Boolean, nullable=False)
+    filename_base = Column(String(200), nullable=False)
+    duration = Column(Integer, nullable=False)
+    collection_name = Column(String(200))
 
     # Not used on init
     ignore = Column(Boolean, nullable=False, default=False)
@@ -35,7 +43,7 @@ class Source(Base, CommonModel):  # type: ignore
 
     # Relationships
     # One to Many
-    # files = db.relationship("File", back_populates="source")
+    files = relationship("SourceFile", back_populates="source")
     tracks = relationship("Track", back_populates="source")
 
     # Many to One
@@ -66,7 +74,7 @@ class Track(Base, CommonModel):
 
     # Relationships
     # Track -> File (One to Many)
-    # files = db.relationship("File", back_populates="track")
+    files = relationship("TrackFile", back_populates="track")
 
     # (Many to One)
     album_id = Column(Integer, ForeignKey("albums.id"))
@@ -99,6 +107,7 @@ class Album(Base, CommonModel):
 
     #     files = db.relationship("File", back_populates="album") # should have an image file
     tracks = relationship("Track", back_populates="album")
+    files = relationship("AlbumFile", back_populates="album")
 
     def __repr__(self):
         return "Album(id=%d,album_name=%s)" % (self.id, self.album_name)
@@ -196,3 +205,41 @@ class TrackArtist(Base):
     track_id = Column(ForeignKey("tracks.id"), primary_key=True)
     artist_id = Column(ForeignKey("artists.id"), primary_key=True)
     sequence_order = Column(Integer, nullable=False)
+
+
+class MediaFile(object):
+
+    file_name = Column(String(200), nullable=False, unique=True)
+
+    # this should probably be some type of enum structure
+    file_type = Column(String(200), nullable=False)
+
+
+class AlbumFile(Base, MediaFile, CommonModel):
+    __tablename__ = "album_files"
+
+    album_id = Column(Integer, ForeignKey("albums.id"))
+    album = relationship("Album", back_populates="files")
+
+    def __repr__(self):
+        return "AlbumFile(id=%d,file_name=%s)" % (self.id, self.file_name)
+
+
+class TrackFile(Base, MediaFile, CommonModel):
+    __tablename__ = "track_files"
+    # Init
+    track_id = Column(Integer, ForeignKey("tracks.id"))
+    track = relationship("Track", back_populates="files")
+
+    def __repr__(self):
+        return "TrackFile(id=%d,file_name=%s)" % (self.id, self.file_name)
+
+
+class SourceFile(Base, MediaFile, CommonModel):
+    __tablename__ = "source_files"
+    # Init
+    source_id = Column(Integer, ForeignKey("sources.id"))
+    source = relationship("Source", back_populates="files")
+
+    def __repr__(self):
+        return "SourceFile(id=%d,file_name=%s)" % (self.id, self.file_name)

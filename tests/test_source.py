@@ -1,9 +1,3 @@
-def test_get_root(client):
-    response = client.get("/")
-    assert response.status_code == 200
-    assert response.json() == {"msg": "Hello World"}
-
-
 def test_get_sources(client):
     response = client.get("/sources")
     assert response.status_code == 200

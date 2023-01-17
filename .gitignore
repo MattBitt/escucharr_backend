@@ -24,3 +24,4 @@ archive.zip
 programming_notes.txt
 run_pytest.sh
 logs/*
+old_code_likely_dont_need/*

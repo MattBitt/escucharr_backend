@@ -6,12 +6,13 @@ from datetime import date, datetime
 class SourceBaseSchema(BaseModel):
     url: str
     video_title: str
-    video_type: str
-    episode_number: Optional[str] = ""
+    # video_type: str
     ignore: Optional[bool] = False
     plex_id: Optional[str] = ""
     upload_date: date
-    separate_album_per_video: bool
+    duration: Optional[int]
+    filename_base: str
+    collection_name: Optional[str] = ""
 
     # when a source is created, it shouldn't have an album reference yet
     # after establishing the source, the album name/details should be created
@@ -44,7 +45,6 @@ class TrackBaseSchema(BaseModel):
     start_time: Optional[int] = 0
     end_time: Optional[int] = 0
     plex_id: Optional[str] = ""
-    source_id: int
     album_id: int
 
     class Config:
@@ -137,6 +137,32 @@ class BeatSchema(BeatBaseSchema):
         orm_mode = True
 
 
+class MediaFileSchema(BaseModel):
+    file_name: str
+    file_type: str
+
+
+class AlbumFileSchema(MediaFileSchema):
+    album_id: int
+
+    class Config:
+        orm_mode = True
+
+
+class SourceFileSchema(MediaFileSchema):
+    source_id: int
+
+    class Config:
+        orm_mode = True
+
+
+class TrackFileSchema(MediaFileSchema):
+    track_id: int
+
+    class Config:
+        orm_mode = True
+
+
 class ArtistBaseSchema(BaseModel):
     artist: str
 
@@ -154,10 +180,12 @@ class ArtistSchema(ArtistBaseSchema):
 class SourceWithRelationships(SourceSchema):
     album: AlbumSchema
     tracks: List[TrackSchema]
+    files: List[SourceFileSchema]
 
 
 class AlbumWithRelationships(AlbumSchema):
     sources: List[SourceSchema]
+    files: List[AlbumFileSchema]
 
 
 class TrackWithRelationships(TrackSchema):
@@ -168,6 +196,7 @@ class TrackWithRelationships(TrackSchema):
     producers: List[ProducerSchema]
     beats: List[BeatSchema]
     artists: List[ArtistSchema]
+    files: List[TrackFileSchema]
 
 
 class WordWithRelationships(WordSchema):

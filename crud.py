@@ -1,8 +1,6 @@
-from typing import List
-
-from sqlalchemy.orm import Session  # type: ignore
-
+from sqlalchemy.orm import Session
 from models import (
+    Base,
     Source,
     Track,
     Album,
@@ -16,315 +14,94 @@ from models import (
     TrackBeat,
     TrackArtist,
     Beat,
+    SourceFile,
+    AlbumFile,
+    TrackFile,
 )
 
 
-class SourceRepo:
-    def create(self, source: Source, session: Session):
-        session.add(source)
+class DBOperations:
+    def __init__(self, object_type):
+        self.object_type = object_type
+
+    def create(self, db_object, session: Session) -> Base:
+        session.add(db_object)
         session.commit()
-        return source
+        return db_object
 
-    def fetchById(self, id: int, session: Session) -> Source:
-        return session.query(Source).filter_by(id=id).first()
+    def fetchById(self, id: int, session: Session):
+        return session.query(self.object_type).filter_by(id=id).first()
 
-    def fetchAll(self, session: Session) -> List[Source]:
-        return session.query(Source).all()
+    def fetchURLs(self, session):
+        results = session.query(self.object_type.url).all()
+        url_list = results = [r for (r,) in results]
+        return url_list
 
-    def delete(self, id: int, session: Session) -> None:
-        source = session.query(Source).filter_by(id=id).first()
-        session.delete(source)
-        session.commit()
+    def fetchNotDownloaded(self, session: Session):
+        # returns all sources that are not ignored and that don't have any matching file records
+        q = session.query(Source).where(Source.ignore.is_(False))
+        return q.filter(~Source.files.any())
 
-    def update(
-        self,
-        source_data: Source,
-        session: Session,
-    ):
-        session.merge(source_data)
-        session.commit()
+    def fetchCountByAlbum(self, album_id: int, session: Session):
+        return session.query(self.object_type).filter_by(album_id=album_id).count()
 
-    def bulk_create(self, session: Session, sources_list):
-        session.bulk_save_objects(sources_list)
-        session.commit()
+    def fetchByAlbumName(self, album_name: str, session: Session):
+        return session.query(self.object_type).filter_by(album_name=album_name).first()
 
-    def bulk_delete(self, session: Session):
-        session.query(Source).delete()
-        session.commit()
-
-    def count_rows(self, session: Session):
-        return session.query(Source).count()
-
-
-class TrackRepo:
-    def create(self, track: Track, session: Session):
-        session.add(track)
-        session.commit()
-        return track
-
-    def fetchById(self, id: int, session: Session) -> Track:
-        return session.query(Track).filter_by(id=id).first()
-
-    def fetchAll(self, session: Session) -> List[Track]:
-        return session.query(Track).all()
-
-    def delete(self, id: int, session: Session) -> None:
-        track = session.query(Track).filter_by(id=id).first()
-        session.delete(track)
-        session.commit()
-
-    def update(
-        self,
-        track_data: Track,
-        session: Session,
-    ):
-        session.merge(track_data)
-        session.commit()
-
-    def bulk_create(self, session: Session, tracks_list):
-        session.bulk_save_objects(tracks_list)
-        session.commit()
-
-    def bulk_delete(self, session: Session):
-        session.query(Track).delete()
-        session.commit()
-
-
-class AlbumRepo:
-    def create(self, album: Album, session: Session):
-        session.add(album)
-        session.commit()
-        return album
-
-    def fetchById(self, id: int, session: Session) -> Album:
-        return session.query(Album).filter_by(id=id).first()
-
-    def fetchByAlbumName(self, album_name: str, session: Session) -> Album:
-        return session.query(Album).filter_by(album_name=album_name).first()
-
-    def fetchAll(self, session: Session) -> List[Album]:
-        return session.query(Album).all()
-
-    def delete(self, id: int, session: Session) -> None:
-        album = session.query(Album).filter_by(id=id).first()
-        session.delete(album)
-        session.commit()
-
-    def update(
-        self,
-        album_data: Album,
-        session: Session,
-    ):
-        session.merge(album_data)
-        session.commit()
-
-    def bulk_create(self, session: Session, albums_list):
-        session.bulk_save_objects(albums_list)
-        session.commit()
-
-    def bulk_delete(self, session: Session):
-        session.query(Album).delete()
-        session.commit()
-
-
-class WordRepo:
-    def create(self, word: Word, session: Session):
-        session.add(word)
-        session.commit()
-        return word
-
-    def fetchById(self, id: int, session: Session) -> Word:
-        return session.query(Word).filter_by(id=id).first()
-
-    def fetchByWord(self, word: str, session: Session) -> Word:
-        return session.query(Word).filter_by(word=word).first()
-
-    def fetchAll(self, session: Session) -> List[Word]:
-        return session.query(Word).all()
-
-    def delete(self, id: int, session: Session) -> None:
-        word = session.query(Word).filter_by(id=id).first()
-        session.delete(word)
-        session.commit()
-
-    def update(
-        self,
-        word_data: Word,
-        session: Session,
-    ):
-        session.merge(word_data)
-        session.commit()
-
-    def bulk_create(self, session: Session, words_list):
-        session.bulk_save_objects(words_list)
-        session.commit()
-
-    def bulk_delete(self, session: Session):
-        session.query(Word).delete()
-        session.commit()
-
-    def count_rows(self, session: Session):
-        return session.query(Word).count()
-
-
-class ProducerRepo:
-    def create(self, producer: Producer, session: Session):
-        session.add(producer)
-        session.commit()
-        return producer
-
-    def fetchById(self, id: int, session: Session) -> Producer:
-        return session.query(Producer).filter_by(id=id).first()
-
-    def fetchByProducer(self, producer: str, session: Session) -> Producer:
-        return session.query(Producer).filter_by(producer=producer).first()
-
-    def fetchAll(self, session: Session) -> List[Producer]:
-        return session.query(Producer).all()
-
-    def delete(self, id: int, session: Session) -> None:
-        producer = session.query(Producer).filter_by(id=id).first()
-        session.delete(producer)
-        session.commit()
-
-    def update(
-        self,
-        producer_data: Producer,
-        session: Session,
-    ):
-        session.merge(producer_data)
-        session.commit()
-
-    def bulk_create(self, session: Session, producers_list):
-        session.bulk_save_objects(producers_list)
-        session.commit()
-
-    def bulk_delete(self, session: Session):
-        session.query(Producer).delete()
-        session.commit()
-
-    def count_rows(self, session: Session):
-        return session.query(Producer).count()
-
-
-class TagRepo:
-    def create(self, tag: Tag, session: Session):
-        session.add(tag)
-        session.commit()
-        return tag
-
-    def fetchById(self, id: int, session: Session) -> Tag:
-        return session.query(Tag).filter_by(id=id).first()
-
-    def fetchByTag(self, tag: str, session: Session) -> Tag:
-        return session.query(Tag).filter_by(tag=tag).first()
-
-    def fetchAll(self, session: Session) -> List[Tag]:
-        return session.query(Tag).all()
-
-    def delete(self, id: int, session: Session) -> None:
-        tag = session.query(Tag).filter_by(id=id).first()
-        session.delete(tag)
-        session.commit()
-
-    def update(
-        self,
-        tag_data: Tag,
-        session: Session,
-    ):
-        session.merge(tag_data)
-        session.commit()
-
-    def bulk_create(self, session: Session, tags_list):
-        session.bulk_save_objects(tags_list)
-        session.commit()
-
-    def bulk_delete(self, session: Session):
-        session.query(Tag).delete()
-        session.commit()
-
-    def count_rows(self, session: Session):
-        return session.query(Tag).count()
-
-
-class BeatRepo:
-    def create(self, beat: Beat, session: Session):
-        session.add(beat)
-        session.commit()
-        return beat
-
-    def fetchById(self, id: int, session: Session) -> Beat:
-        return session.query(Beat).filter_by(id=id).first()
-
-    def fetchByBeat(self, beat: str, session: Session) -> Beat:
-        return session.query(Beat).filter_by(beat_name=beat).first()
-
-    def fetchAll(self, session: Session) -> List[Beat]:
-        return session.query(Beat).all()
-
-    def delete(self, id: int, session: Session) -> None:
-        beat = session.query(Beat).filter_by(id=id).first()
-        session.delete(beat)
-        session.commit()
-
-    def update(
-        self,
-        beat_data: Beat,
-        session: Session,
-    ):
-        session.merge(beat_data)
-        session.commit()
-
-    def bulk_create(self, session: Session, beats_list):
-        session.bulk_save_objects(beats_list)
-        session.commit()
-
-    def bulk_delete(self, session: Session):
-        session.query(Beat).delete()
-        session.commit()
-
-    def count_rows(self, session: Session):
-        return session.query(Beat).count()
-
-
-class ArtistRepo:
-    def create(self, artist: Artist, session: Session):
-        session.add(artist)
-        session.commit()
-        return artist
-
-    def fetchById(self, id: int, session: Session) -> Artist:
-        return session.query(Artist).filter_by(id=id).first()
-
-    def fetchByArtist(self, artist: str, session: Session) -> Artist:
+    def fetchByArtist(self, artist: str, session: Session):
         return session.query(Artist).filter_by(artist_name=artist).first()
 
-    def fetchAll(self, session: Session) -> List[Artist]:
-        return session.query(Artist).all()
+    def fetchByBeat(self, beat: str, session: Session):
+        return session.query(Beat).filter_by(beat_name=beat).first()
+
+    def fetchByProducer(self, producer: str, session: Session):
+        return session.query(Producer).filter_by(producer=producer).first()
+
+    def fetchByWord(self, word: str, session: Session):
+        return session.query(Word).filter_by(word=word).first()
+
+    def fetchByTag(self, tag: str, session: Session):
+        return session.query(Tag).filter_by(tag=tag).first()
+
+    def fetchAll(self, session: Session):
+        return session.query(self.object_type).all()
 
     def delete(self, id: int, session: Session) -> None:
-        artist = session.query(Artist).filter_by(id=id).first()
-        session.delete(artist)
+        db_object = session.query(self.object_type).filter_by(id=id).first()
+        session.delete(db_object)
         session.commit()
 
     def update(
         self,
-        artist_data: Artist,
+        db_object,
         session: Session,
     ):
-        session.merge(artist_data)
+        session.merge(db_object)
         session.commit()
 
-    def bulk_create(self, session: Session, artists_list):
-        session.bulk_save_objects(artists_list)
+    def bulk_create(self, session: Session, objects_list):
+        session.bulk_save_objects(objects_list)
         session.commit()
 
     def bulk_delete(self, session: Session):
-        session.query(Artist).delete()
+        session.query(self.object_type).delete()
         session.commit()
 
     def count_rows(self, session: Session):
-        return session.query(Artist).count()
+        return session.query(self.object_type).count()
+
+
+SourceRepo = DBOperations(Source)
+TrackRepo = DBOperations(Track)
+AlbumRepo = DBOperations(Album)
+WordRepo = DBOperations(Word)
+ProducerRepo = DBOperations(Producer)
+BeatRepo = DBOperations(Beat)
+ArtistRepo = DBOperations(Artist)
+TagRepo = DBOperations(Tag)
+SourceFileRepo = DBOperations(SourceFile)
+AlbumFileRepo = DBOperations(AlbumFile)
+TrackFileRepo = DBOperations(TrackFile)
 
 
 class TrackWordRepo:
