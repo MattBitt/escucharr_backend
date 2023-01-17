@@ -59,3 +59,5 @@ RUN set -eux \
 
 # copy project
 COPY . /usr/app/
+
+CMD ["python", "-m", "main"]

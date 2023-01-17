@@ -34,8 +34,11 @@ class GlobalConfig(BaseSettings):
     LOG_LEVEL: str = Field("ERROR", env="LOG_LEVEL")
 
     # environment specific variables do not need the Field class
+
     PLEXURL = "http://192.168.0.202:32400"
     TAUTULLI_URL = "http://192.168.0.202:8181"
+    SERVER_HOST: Optional[str] = None
+    SERVER_PORT: Optional[str] = None
     DOWNLOAD_PATH: Optional[str] = None
     SOURCE_ROOT_PATH: Optional[str] = None
     TRACK_ROOT_PATH: Optional[str] = None

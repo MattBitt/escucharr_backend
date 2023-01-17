@@ -64,4 +64,6 @@ if __name__ == "__main__":
     if not (cnf.ENV_STATE == "dev" and not cnf.APP_CONFIG.download_during_testing):
         download_sources()
     verify_files_exist()
-    uvicorn.run("main:app", port=9000, reload=True)
+    uvicorn.run(
+        "main:app", host=cnf.SERVER_HOST, port=int(cnf.SERVER_PORT), reload=True
+    )
