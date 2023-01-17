@@ -193,7 +193,7 @@ def get_collection_url_list(collection):
         logger.error("There was an error processing {}", yt_dl.returncode)
         return []
     else:
-        logger.success(
+        logger.debug(
             "The URLs for collection {} were downloaded.", collection["collection_name"]
         )
         return lines

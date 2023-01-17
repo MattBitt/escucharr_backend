@@ -420,6 +420,7 @@ def compute_source_file_paths(source, source_root_path, files):
 
 
 def verify_files_exist():
+    logger.info("Checking that all source files listed in db exist on disk")
     session = db_session()
     file_list = crud.SourceFileRepo.fetchAll(session)
     session.close
@@ -434,7 +435,7 @@ def download_sources():
     sources = crud.SourceRepo.fetchNotDownloaded(session=session).all()
     session.close()
     if len(sources) == 0:
-        logger.success("There are no sources in the db that haven't been processed!")
+        logger.info("No new videos to download")
         return None
 
     # this is the root path where the new files will be

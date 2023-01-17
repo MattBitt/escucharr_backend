@@ -32,7 +32,7 @@ class GlobalConfig(BaseSettings):
     # define global variables with the Field class
     ENV_STATE: Optional[str] = Field(None, env="ENV_STATE")
     LOG_LEVEL: str = Field("ERROR", env="LOG_LEVEL")
-
+    APP_VER: str = Field("Not Found", env="APP_VER")
     # environment specific variables do not need the Field class
 
     PLEXURL = "http://192.168.0.202:32400"

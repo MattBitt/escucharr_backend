@@ -54,16 +54,19 @@ app.include_router(artist_router)
 
 if __name__ == "__main__":
     logger = setup_logging()
-    logger.success("Starting program")
-    logger.error("Log Level is currently {}".format(cnf.LOG_LEVEL))
+    logger.info("Starting program version: {}".format(cnf.APP_VER))
+    logger.debug("The current environment is {}".format(cnf.ENV_STATE))
+    logger.debug("Log Level is currently {}".format(cnf.LOG_LEVEL))
     Base.metadata.create_all(bind=engine)
-
+    print(cnf.SERVER_PORT)  # remove when server can use this
     if not (cnf.ENV_STATE == "dev" and not cnf.APP_CONFIG.import_during_testing):
-        logger.info("Downloading all sources from specified channels")
+        logger.info("Searching all channels for new videos")
         update_sources_in_db()
     if not (cnf.ENV_STATE == "dev" and not cnf.APP_CONFIG.download_during_testing):
+        logger.info("Downloading any missing media from the sources db")
         download_sources()
     verify_files_exist()
+
     uvicorn.run(
         "main:app", host=cnf.SERVER_HOST, port=int(cnf.SERVER_PORT), reload=True
     )
