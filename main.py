@@ -23,6 +23,7 @@ app = FastAPI()
 origins = [
     "http://localhost",
     "http://localhost:5173",
+    "http://192.168.0.202:5173",
 ]
 
 app.add_middleware(
@@ -47,18 +48,12 @@ app.include_router(artist_router)
 # needed to be restarted
 
 
-# @app.get("/")
-# async def read_main():
-#     return {"msg": "Hello World"}
-
-
 if __name__ == "__main__":
     logger = setup_logging()
     logger.info("Starting program version: {}".format(cnf.APP_VER))
     logger.debug("The current environment is {}".format(cnf.ENV_STATE))
     logger.debug("Log Level is currently {}".format(cnf.LOG_LEVEL))
     Base.metadata.create_all(bind=engine)
-    print(cnf.SERVER_PORT)  # remove when server can use this
     if not (cnf.ENV_STATE == "dev" and not cnf.APP_CONFIG.import_during_testing):
         logger.info("Searching all channels for new videos")
         update_sources_in_db()
