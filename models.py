@@ -62,10 +62,9 @@ class Track(Base, CommonModel):
     __tablename__ = "tracks"
     # Required
     track_title = Column(String(200), nullable=False)
-
-    # Not needed on init?
     start_time = Column(Integer, nullable=False, default=0)  # in ms
     end_time = Column(Integer, nullable=False, default=0)
+    track_number = Column(Integer, nullable=False)
 
     # Not used on init
     # not sure where this is in the plexapi.

@@ -40,8 +40,15 @@ artist_router = APIRouter(prefix="/artists", tags=["Artists"])
 
 @source_router.get("/", response_model=List[SourceWithRelationships])
 def read_sources(session: Session = Depends(get_session)):
-    sources = crud.SourceRepo.fetchAll(session=session)
+    sources = crud.SourceRepo.fetchNotIgnored(session=session).all()
     logger.debug("Getting all sources")
+    return sources
+
+
+@source_router.get("/recent", response_model=List[SourceWithRelationships])
+def read_recent_sources(session: Session = Depends(get_session)):
+    sources = crud.SourceRepo.fetchRecent(session=session)
+    logger.debug("Getting recent sources")
     return sources
 
 
@@ -53,34 +60,35 @@ def read_source(id: int, session: Session = Depends(get_session)):
     return source
 
 
-@source_router.post("/", response_model=SourceSchema)
-def create_source(source: SourceBaseSchema, session: Session = Depends(get_session)):
-    album_id = get_or_create_album(source, session)
-    source_model = models.Source(**source.dict())
-    source_model.album_id = album_id
-    source = crud.SourceRepo.create(db_object=source_model, session=session)
-    return source
+# @source_router.post("/", response_model=SourceSchema)
+# def create_source(source: SourceBaseSchema, session: Session = Depends(get_session)):
+#     # album_id = get_or_create_album(source, session)
+#     # I don't think this w
+#     source_model = models.Source(**source.dict())
+#     source_model.album_id = album_id
+#     source = crud.SourceRepo.create(db_object=source_model, session=session)
+#     return source
 
 
 # this should probably go away.  will i ever be creating sources/albums from post requests?
 # they should typically be created by the auto-parser
-def get_or_create_album(source: SourceBaseSchema, session: Session):
-    album_data = {}
-    if source.separate_album_per_video and source.episode_number:
-        album_data["album_name"] = source.video_type + " " + source.episode_number
-    else:
-        album_data["album_name"] = source.video_type
-    album_data["track_prefix"] = "My Prefix:  "
-    album_data["path"] = "some/random/path/"
-    # check if album already exists
-    album = crud.AlbumRepo.fetchByAlbumName(
-        album_name=album_data["album_name"], session=session
-    )
-    if not album:
-        album_schema = AlbumBaseSchema(**album_data)
-        album_model = models.Album(**album_schema.dict())
-        album = crud.AlbumRepo.create(db_object=album_model, session=session)
-    return album.id
+# def get_or_create_album(source: SourceBaseSchema, session: Session):
+#     album_data = {}
+#     if source.separate_album_per_video and source.episode_number:
+#         album_data["album_name"] = source.video_type + " " + source.episode_number
+#     else:
+#         album_data["album_name"] = source.video_type
+#     album_data["track_prefix"] = "My Prefix:  "
+#     album_data["path"] = "some/random/path/"
+#     # check if album already exists
+#     album = crud.AlbumRepo.fetchByAlbumName(
+#         album_name=album_data["album_name"], session=session
+#     )
+#     if not album:
+#         album_schema = AlbumBaseSchema(**album_data)
+#         album_model = models.Album(**album_schema.dict())
+#         album = crud.AlbumRepo.create(db_object=album_model, session=session)
+#     return album.id
 
 
 @source_router.put("/{id}", response_model=SourceSchema)

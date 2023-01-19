@@ -13,7 +13,8 @@ class SourceBaseSchema(BaseModel):
     duration: Optional[int]
     filename_base: str
     collection_name: Optional[str] = ""
-
+    created: datetime
+    modified: Optional[datetime]
     # when a source is created, it shouldn't have an album reference yet
     # after establishing the source, the album name/details should be created
     album_id: Optional[int]
@@ -44,6 +45,7 @@ class TrackBaseSchema(BaseModel):
     source_id: int
     start_time: Optional[int] = 0
     end_time: Optional[int] = 0
+    track_number: str
     plex_id: Optional[str] = ""
     album_id: int
 
@@ -185,6 +187,7 @@ class SourceWithRelationships(SourceSchema):
 
 class AlbumWithRelationships(AlbumSchema):
     sources: List[SourceSchema]
+    tracks: List[TrackSchema]
     files: List[AlbumFileSchema]
 
 

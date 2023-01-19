@@ -32,6 +32,9 @@ class DBOperations:
     def fetchById(self, id: int, session: Session):
         return session.query(self.object_type).filter_by(id=id).first()
 
+    def fetchByURL(self, url: str, session):
+        return session.query(self.object_type).filter_by(url=url).first()
+
     def fetchURLs(self, session):
         results = session.query(self.object_type.url).all()
         url_list = results = [r for (r,) in results]
@@ -45,6 +48,9 @@ class DBOperations:
     def fetchCountByAlbum(self, album_id: int, session: Session):
         return session.query(self.object_type).filter_by(album_id=album_id).count()
 
+    def fetchTrackCountByAlbum(self, album_id: int, session: Session):
+        return session.query(Track).filter_by(album_id=album_id).count()
+
     def fetchByAlbumName(self, album_name: str, session: Session):
         return session.query(self.object_type).filter_by(album_name=album_name).first()
 
@@ -57,6 +63,9 @@ class DBOperations:
     def fetchByProducer(self, producer: str, session: Session):
         return session.query(Producer).filter_by(producer=producer).first()
 
+    def fetchByTrackTitle(self, track_title: str, session: Session):
+        return session.query(Track).filter_by(track_title=track_title).first()
+
     def fetchByWord(self, word: str, session: Session):
         return session.query(Word).filter_by(word=word).first()
 
@@ -65,6 +74,21 @@ class DBOperations:
 
     def fetchAll(self, session: Session):
         return session.query(self.object_type).all()
+
+    def fetchNotIgnored(self, session: Session):
+        return session.query(self.object_type).filter_by(ignore=False)
+
+    def fetchIgnored(self, session: Session):
+        return session.query(self.object_type).filter_by(ignore=True).all()
+
+    def fetchRecent(self, session: Session):
+        return (
+            # session.query(self.object_type)
+            self.fetchNotIgnored(session)
+            .order_by(self.object_type.created.desc())
+            .limit(10)
+            .all()
+        )
 
     def delete(self, id: int, session: Session) -> None:
         db_object = session.query(self.object_type).filter_by(id=id).first()

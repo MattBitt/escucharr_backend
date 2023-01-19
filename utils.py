@@ -24,3 +24,19 @@ def write_dict_to_yaml(data, open_type, file_name):
     with open(file_name, open_type) as f:
         # width paramater should stop it from splitting long lines
         yaml.dump(data, f, default_flow_style=False, sort_keys=False, width=1000)
+
+
+def convert_hms_to_ms(hms_time: str) -> int:
+    if len(hms_time) == 7:
+        hour_str = hms_time[0]
+        minute_str = hms_time[2:4]
+    elif len(hms_time) == 8:
+        hour_str = hms_time[0:1]
+        minute_str = hms_time[3:5]
+    second_str = hms_time[-2:]
+
+    return (
+        int(hour_str) * 60 * 60 * 1000
+        + int(minute_str) * 60 * 1000
+        + int(second_str) * 1000
+    )

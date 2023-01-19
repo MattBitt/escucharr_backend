@@ -132,7 +132,6 @@ def create_source_dict(collection, url, metadata):
     source = {
         "url": url,
         "video_title": metadata["fulltitle"],
-        # "video_type": collection["collection_name"],  # do i still need this?
         "ignore": ignore,
         "upload_date": upload_date,
         "album_id": album_id,
@@ -148,6 +147,7 @@ def add_source_to_db(source_dict):
     model = models.Source
     repo = crud.SourceRepo
     schema = schemas.SourceBaseSchema
+    logger.debug("Adding new video to Database {}".format(source_dict["video_title"]))
     add_to_db(source_dict, model, repo, schema)
 
 
@@ -168,12 +168,17 @@ def add_to_db(data_to_add, model, repo, schema):
 
 
 def is_url_in_db(url):
-    urls_in_db = read_urls_from_db()
-    for src in urls_in_db:
-        if url == src:
-            # before checking anything else, see if its already in the db
-            # if it is, no work to do
-            return True
+    session = db_session()
+    result = crud.SourceRepo.fetchByURL(url=url, session=session)
+    session.close()
+    return result is not None
+
+    # urls_in_db = read_urls_from_db()
+    # for src in urls_in_db:
+    #     if url == src:
+    # before checking anything else, see if its already in the db
+    # if it is, no work to do
+    # return True
 
 
 def is_url_in_individual_video(url, individual_videos):
