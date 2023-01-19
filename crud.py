@@ -64,7 +64,9 @@ class DBOperations:
         return session.query(Producer).filter_by(producer=producer).first()
 
     def fetchByTrackTitle(self, track_title: str, session: Session):
-        return session.query(Track).filter_by(track_title=track_title).first()
+        return (
+            session.query(Track).filter(Track.track_title.contains(track_title)).first()
+        )
 
     def fetchByWord(self, word: str, session: Session):
         return session.query(Word).filter_by(word=word).first()
@@ -80,6 +82,10 @@ class DBOperations:
 
     def fetchIgnored(self, session: Session):
         return session.query(self.object_type).filter_by(ignore=True).all()
+
+    def fetchWords(self, track_id, session: Session):
+        track = session.query(self.object_type).filter_by(id=track_id).first()
+        return track.words
 
     def fetchRecent(self, session: Session):
         return (

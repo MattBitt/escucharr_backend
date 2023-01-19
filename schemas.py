@@ -191,6 +191,10 @@ class AlbumWithRelationships(AlbumSchema):
     files: List[AlbumFileSchema]
 
 
+class WordWithRelationships(WordSchema):
+    tracks: List[TrackSchema]
+
+
 class TrackWithRelationships(TrackSchema):
     source: SourceSchema
     album: AlbumSchema
@@ -200,10 +204,6 @@ class TrackWithRelationships(TrackSchema):
     beats: List[BeatSchema]
     artists: List[ArtistSchema]
     files: List[TrackFileSchema]
-
-
-class WordWithRelationships(WordSchema):
-    tracks: List[TrackSchema]
 
 
 class TagWithRelationships(TagSchema):
