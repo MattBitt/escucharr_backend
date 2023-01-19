@@ -13,7 +13,7 @@ class SourceBaseSchema(BaseModel):
     duration: Optional[int]
     filename_base: str
     collection_name: Optional[str] = ""
-    created: datetime
+    created: Optional[datetime]
     modified: Optional[datetime]
     # when a source is created, it shouldn't have an album reference yet
     # after establishing the source, the album name/details should be created
