@@ -30,7 +30,7 @@ class DBOperations:
         return db_object
 
     def fetchById(self, id: int, session: Session):
-        return session.query(self.object_type).filter_by(id=id).first()
+         return session.query(self.object_type).filter_by(id=id).first()
 
     def fetchByURL(self, url: str, session):
         return session.query(self.object_type).filter_by(url=url).first()
@@ -44,6 +44,9 @@ class DBOperations:
         # returns all sources that are not ignored and that don't have any matching file records
         q = session.query(Source).where(Source.ignore.is_(False))
         return q.filter(~Source.files.any())
+
+    def fetch_items_with_no_files(self, session: Session):
+        return session.query(self.object_type).filter(~self.object_type.files.any())
 
     def fetchCountByAlbum(self, album_id: int, session: Session):
         return session.query(self.object_type).filter_by(album_id=album_id).count()
@@ -67,6 +70,9 @@ class DBOperations:
         return (
             session.query(Track).filter(Track.track_title.contains(track_title)).first()
         )
+
+    def fetch_by(self, session: Session = None, filter=None):
+        return session.query(self.object_type).filter_by(**filter).first()
 
     def fetchByWord(self, word: str, session: Session):
         return session.query(Word).filter_by(word=word).first()

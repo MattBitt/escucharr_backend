@@ -67,35 +67,27 @@ if __name__ == "__main__":
         track_title = track_row["title"]
         track = crud.TrackRepo.fetchByTrackTitle(track_title, session)
 
-        sequence_number = 0
+        word_index = 0
 
         words = track_title.split(",")
         for word_str in words:
             if track is not None:
-                sequence_number = (
-                    crud.TrackWordRepo().fetchLastWordSequence(track, session) + 1
-                )
+                word_index = len(track.words) + 1
+            else:
+                logger.error("Track not found {}".format(track_row))
+                break
             word_to_add = word_str.lower().strip()
-            word_dict = {"word": word_to_add}
             word = crud.WordRepo.fetchByWord(word_to_add, session)
             if word is None:
-                data = schemas.WordBaseSchema(**word_dict)
+                data = schemas.WordBaseSchema(**{"word": word_to_add})
                 data_model = models.Word(**data.dict())
                 word = crud.WordRepo.create(data_model, session)
-                # word = add_to_db(
-                #     word_dict, models.Word, crud.WordRepo, schemas.WordBaseSchema
-                # )
             if word not in track.words:
                 track_word = models.TrackWord(
                     track_id=track.id,
                     word_id=word.id,
-                    sequence_order=sequence_number,
+                    index=word_index,
                 )
             session.add_all([track, track_word])
             session.commit()
         session.close()
-
-    # for each word in track title
-    #   find the word in the db
-    # if it doesn't exist, then create it
-    # add the track and word to the TrackWord table increment sequence

@@ -40,3 +40,20 @@ def convert_hms_to_ms(hms_time: str) -> int:
         + int(minute_str) * 60 * 1000
         + int(second_str) * 1000
     )
+
+
+def convert_ms_to_hms(ms: int) -> str | None:
+    if ms < 0:
+        logger.error("Negative time not supported")
+        return None
+
+    # seconds = str(int((ms / 1000) % 60))
+    # minutes = str(int((ms / (1000 * 60)) % 60))
+    # hours = str(int((ms / (1000 * 60 * 60)) % 24))
+    seconds, milliseconds = divmod(ms, 1000)
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+
+    return (
+        str(hours).zfill(2) + ":" + str(minutes).zfill(2) + ":" + str(seconds).zfill(2)
+    )

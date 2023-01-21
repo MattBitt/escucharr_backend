@@ -175,7 +175,7 @@ class TrackWord(Base):
     __tablename__ = "track_words"
     track_id = Column(ForeignKey("tracks.id"), primary_key=True)
     word_id = Column(ForeignKey("words.id"), primary_key=True)
-    sequence_order = Column(Integer, nullable=False)
+    index = Column(Integer, nullable=False)
 
 
 class TrackTag(Base):
