@@ -5,7 +5,7 @@ from db import Base, engine
 from my_logging import setup_logging
 from configs import cnf
 from source_data import update_sources_in_db, download_sources, verify_files_exist
-
+from track_creator import create_all_tracks
 from routers import (
     source_router,
     track_router,
@@ -15,6 +15,7 @@ from routers import (
     tag_router,
     beat_router,
     artist_router,
+    whatsplaying_router,
 )
 
 
@@ -23,6 +24,7 @@ app = FastAPI()
 origins = [
     "http://localhost",
     "http://localhost:5173",
+    "http://127.0.0.1:5173",
     "http://192.168.0.202:5173",
 ]
 
@@ -42,6 +44,8 @@ app.include_router(producer_router)
 app.include_router(tag_router)
 app.include_router(beat_router)
 app.include_router(artist_router)
+app.include_router(whatsplaying_router)
+
 
 # Should include a health check for the postgres db
 # had a situation where nothing was working, because the db
@@ -60,8 +64,13 @@ if __name__ == "__main__":
     if not (cnf.ENV_STATE == "dev" and not cnf.APP_CONFIG.download_during_testing):
         logger.info("Downloading any missing media from the sources db")
         download_sources()
+    if not (cnf.ENV_STATE == "dev" and not cnf.APP_CONFIG.create_tracks_during_testing):
+        create_all_tracks()
     verify_files_exist()
 
     uvicorn.run(
-        "main:app", host=cnf.SERVER_HOST, port=int(cnf.SERVER_PORT), reload=True
+        "main:app",
+        host=cnf.SERVER_HOST,
+        port=int(cnf.SERVER_PORT),
+        reload=True,
     )

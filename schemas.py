@@ -47,7 +47,7 @@ class TrackBaseSchema(BaseModel):
     end_time: Optional[int] = 0
     track_number: str
     plex_id: Optional[str] = ""
-    album_id: int
+    album_id: Optional[int]
 
     class Config:
         orm_mode = True
@@ -179,16 +179,16 @@ class ArtistSchema(ArtistBaseSchema):
         orm_mode = True
 
 
-class SourceWithRelationships(SourceSchema):
-    album: AlbumSchema
-    tracks: List[TrackSchema]
-    files: List[SourceFileSchema]
-
-
 class AlbumWithRelationships(AlbumSchema):
     sources: List[SourceSchema]
     tracks: List[TrackSchema]
     files: List[AlbumFileSchema]
+
+
+class SourceWithRelationships(SourceSchema):
+    album: AlbumWithRelationships
+    tracks: List[TrackSchema]
+    files: List[SourceFileSchema]
 
 
 class WordWithRelationships(WordSchema):
@@ -220,3 +220,9 @@ class BeatWithRelationships(BeatSchema):
 
 class ArtistWithRelationships(ArtistSchema):
     tracks: List[TrackSchema]
+
+
+class WhatsPlayingSchema(BaseModel):
+    media_type: str
+    current_time: int
+    media_info: SourceWithRelationships | TrackSchema

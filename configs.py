@@ -9,6 +9,7 @@ class AppConfig(BaseModel):
     csv_to_import: str = "config/HarryMackClips.csv"
     import_during_testing: bool = True
     download_during_testing: bool = True
+    create_tracks_during_testing: bool = True
 
     # this file should contain the data to keep checking for new videos
     video_collections_input_file = "config/video_collections.yaml"

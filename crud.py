@@ -30,7 +30,7 @@ class DBOperations:
         return db_object
 
     def fetchById(self, id: int, session: Session):
-         return session.query(self.object_type).filter_by(id=id).first()
+        return session.query(self.object_type).filter_by(id=id).first()
 
     def fetchByURL(self, url: str, session):
         return session.query(self.object_type).filter_by(url=url).first()
@@ -47,6 +47,9 @@ class DBOperations:
 
     def fetch_items_with_no_files(self, session: Session):
         return session.query(self.object_type).filter(~self.object_type.files.any())
+
+    def fetch_item_with_file_name(self, file_name: str, session: Session):
+        return session.query(self.object_type).filter_by(file_name=file_name).all()
 
     def fetchCountByAlbum(self, album_id: int, session: Session):
         return session.query(self.object_type).filter_by(album_id=album_id).count()
@@ -81,13 +84,15 @@ class DBOperations:
         return session.query(Tag).filter_by(tag=tag).first()
 
     def fetchAll(self, session: Session):
+        # remove the limit when testing is finished
         return session.query(self.object_type).all()
 
     def fetchNotIgnored(self, session: Session):
+
         return session.query(self.object_type).filter_by(ignore=False)
 
     def fetchIgnored(self, session: Session):
-        return session.query(self.object_type).filter_by(ignore=True).all()
+        return session.query(self.object_type).filter_by(ignore=True)
 
     def fetchWords(self, track_id, session: Session):
         track = session.query(self.object_type).filter_by(id=track_id).first()

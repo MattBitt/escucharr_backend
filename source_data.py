@@ -125,6 +125,7 @@ def create_source_dict(collection, url, metadata):
                 metadata["collection_name"] = album_name
         else:
             album_name = collection["collection_name"]
+            metadata["collection_name"] = album_name
             num_in_db = count_album_name_in_db(album_name)
             file_base = album_name + " " + str(num_in_db + 1).zfill(3)
 
@@ -218,7 +219,7 @@ def default_indvidual_video_entry_data(url):
 def get_source_metadata(url):
     try:
         metadata = get_json_info(url)
-    except:  # this is a bare except because the yt-dlp error is crazy...
+    except Exception:  # this is a bare except because the yt-dlp error is crazy...
         # logger.error("Unable to download source: {}".format(url))
         return None
     logger.debug("Successfully downloaded metadata for {}".format(url))
@@ -298,6 +299,8 @@ def add_collections_to_db(individual_videos):
                 ):
                     metadata = get_source_metadata(url)
                     if metadata:
+                        # need to delete the error video from the yaml
+                        # i think this is where that should be.
                         source = create_source_dict(collection, url, metadata)
                         add_source_to_db(source)
                     else:
@@ -425,14 +428,21 @@ def compute_source_file_paths(source, source_root_path, files):
 
 
 def verify_files_exist():
-    logger.info("Checking that all source files listed in db exist on disk")
-    session = db_session()
-    file_list = crud.SourceFileRepo.fetchAll(session)
-    session.close
-    for file in file_list:
-        my_file = Path(file.file_name)
-        if not my_file.is_file():
-            logger.error("This file doesn't exist {}".format(file.file_name))
+
+    # i built this to verify source repo files only
+    # and later expanded it to be more generic
+    # should probably move to a different file
+    file_models = [crud.SourceFileRepo, crud.TrackFileRepo]
+    logger.info("Checking that all files listed in db exist on disk")
+    for fm in file_models:
+
+        session = db_session()
+        file_list = fm.fetchAll(session)
+        session.close
+        for file in file_list:
+            my_file = Path(file.file_name)
+            if not my_file.is_file():
+                logger.error("This file doesn't exist {}".format(file.file_name))
 
 
 def download_sources():

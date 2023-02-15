@@ -81,9 +81,7 @@ def create_mp3_from_source(track):
     )
 
     if not file_exists:
-        new_track = crud.TrackFileRepo.create(
-            db_object=track_file_model, session=session
-        )
+        crud.TrackFileRepo.create(db_object=track_file_model, session=session)
 
     session.close()
 
@@ -116,16 +114,14 @@ def write_id3_tags(track_id) -> None:
 
 
 def create_all_tracks():
+    # this function will search the db for tracks without any
+    # existing file.  it should then loop through and create them
+    # from each source
     session = db_session()
-
-    # change it back to this after testing is complete
-    # tracks = crud.TrackRepo.fetch_items_with_no_files(session=session).all()
-    tracks = crud.TrackRepo.fetchAll(session=session)
-
+    tracks = crud.TrackRepo.fetch_items_with_no_files(session=session).all()
     for track in tracks:
         try:
             create_mp3_from_source(track)
-
             # this should be a separate task from writing the mp3 files
             write_id3_tags(track.id)
         except Exception:

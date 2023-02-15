@@ -5,6 +5,7 @@ import crud
 import models
 from db import get_session
 from my_logging import logger
+from plex_functions import currently_playing
 from schemas import (
     SourceSchema,
     SourceBaseSchema,
@@ -26,6 +27,7 @@ from schemas import (
     BeatSchema,
     ArtistSchema,
     ArtistBaseSchema,
+    WhatsPlayingSchema,
 )
 
 source_router = APIRouter(prefix="/sources", tags=["Sources"])
@@ -36,10 +38,12 @@ producer_router = APIRouter(prefix="/producers", tags=["Producers"])
 tag_router = APIRouter(prefix="/tags", tags=["Tags"])
 beat_router = APIRouter(prefix="/beats", tags=["Beats"])
 artist_router = APIRouter(prefix="/artists", tags=["Artists"])
+whatsplaying_router = APIRouter(prefix="/whatsplaying", tags=["Whats Playing"])
 
 
-@source_router.get("/", response_model=List[SourceWithRelationships])
+@source_router.get("/", response_model=List[SourceSchema])
 def read_sources(session: Session = Depends(get_session)):
+
     sources = crud.SourceRepo.fetchNotIgnored(session=session).all()
     logger.debug("Getting all sources")
     return sources
@@ -93,6 +97,7 @@ def read_source(id: int, session: Session = Depends(get_session)):
 
 @source_router.put("/{id}", response_model=SourceSchema)
 def update_source(source: SourceSchema, session: Session = Depends(get_session)):
+
     updated_source = crud.SourceRepo.fetchById(id=source.id, session=session)
     if updated_source:
         updated_source.video_title = source.video_title
@@ -121,6 +126,7 @@ def delete_source(id: int, session: Session = Depends(get_session)):
 # this data is sent (along with db session) to the db functions
 @track_router.get("/", response_model=List[TrackSchema])
 def read_tracks(session: Session = Depends(get_session)):
+    # remove the limit when testing is finished
     tracks = crud.TrackRepo.fetchAll(session=session)
     return tracks
 
@@ -142,13 +148,20 @@ def create_track(
     beats: List[BeatBaseSchema],
     session: Session = Depends(get_session),
 ):
+    logger.debug("track input:  {}".format(track))
     word_list = create_word_list(words, session)
     tag_list = create_tag_list(tags, session)
     producer_list = create_producer_list(producers, session)
     beat_list = create_beat_list(beats, session)
 
     track_model = models.Track(**track.dict())
+    # need to find album from source
+    source = crud.SourceRepo.fetchById(id=track.source_id, session=session)
+    track_model.album_id = source.album.id
+    # after that need to calculate track number
+
     track = crud.TrackRepo.create(db_object=track_model, session=session)
+
     track = add_words_to_track(track, word_list, session)
     track = add_tags_to_track(track, tag_list, session)
     track = add_producers_to_track(track, producer_list, session)
@@ -246,7 +259,7 @@ def add_words_to_track(
             track_word = models.TrackWord(
                 track_id=track.id,
                 word_id=word.id,
-                sequence_order=next_word_sequence_number,
+                index=next_word_sequence_number,
             )
             session.add_all([track, track_word])
             session.commit()
@@ -319,6 +332,7 @@ def update_track(track: TrackSchema, session: Session = Depends(get_session)):
         updated_track.start_time = track.start_time
         updated_track.end_time = track.end_time
         updated_track.plex_id = track.plex_id
+        updated_track.track_number = track.track_number
         track = crud.TrackRepo.update(db_object=updated_track, session=session)
         track = crud.TrackRepo.fetchById(id=updated_track.id, session=session)
         return track
@@ -352,6 +366,16 @@ def read_album(id: int, session: Session = Depends(get_session)):
     if album is None:
         raise HTTPException(status_code=404, detail="Album not found")
     return album
+
+
+@album_router.get("/{id}/next_track_number")
+def next_track_number(id: int, session: Session = Depends(get_session)):
+    track_number = (
+        crud.AlbumRepo.fetchTrackCountByAlbum(session=session, album_id=id) + 1
+    )
+    if track_number == 1:
+        raise HTTPException(status_code=404, detail="Album not found")
+    return track_number
 
 
 @album_router.post("/", response_model=AlbumSchema)
@@ -390,9 +414,23 @@ def delete_album(id: int, session: Session = Depends(get_session)):
 # These functions are called from the front end
 # either nothing or an id is sent by the front end
 # this data is sent (along with db session) to the db functions
-@word_router.get("/", response_model=List[WordWithRelationships])
+@word_router.get("/", response_model=List[WordSchema])
 def read_words(session: Session = Depends(get_session)):
     words = crud.WordRepo.fetchAll(session=session)
+    return words
+
+
+@word_router.get("/fake")
+def read_fake_words(session: Session = Depends(get_session)):
+    # words = crud.WordRepo.fetchAll(session=session)
+    words = [
+        {"label": "dictionary", "value": "dictionary"},
+        {"label": "book", "value": "book"},
+        {"label": "table", "value": "table"},
+        {"label": "bedside", "value": "bedside"},
+        {"label": "precautionary", "value": "precautionary"},
+    ]
+
     return words
 
 
@@ -629,3 +667,46 @@ def delete_artist(id: int, session: Session = Depends(get_session)):
 
 
 # ******************************** ARTIST ROUTER *************************
+
+
+@whatsplaying_router.get("/", response_model=WhatsPlayingSchema)
+def get_whats_playing(session: Session = Depends(get_session)):
+    # query plex api for whats playing
+    # determine if it is a source or a track
+    # query the appropriate table for record
+    logger.debug("About to fetch whats playing from Plex")
+    whatsplaying = currently_playing()
+
+    # need to figure out how to work with multiple playing at once
+    # for now just use first result
+    whatsplaying = whatsplaying[0]
+    if whatsplaying["library_type"] == "source":
+        media_type = "source"
+        file_model = crud.SourceFileRepo
+        model = crud.SourceRepo
+        current_time = whatsplaying["current_time"]
+    elif whatsplaying["library_type"] == "track":
+        media_type = "track"
+        file_model = crud.TrackFileRepo
+        model = crud.TrackRepo
+        current_time = whatsplaying["current_time"]
+    else:
+        raise HTTPException(
+            status_code=404, detail="No media currently found playing on Plex"
+        )
+
+    playing = file_model.fetch_item_with_file_name(
+        whatsplaying["video_file"], session=session
+    )
+    if playing:
+        media_info = model.fetchById(id=playing[0].source_id, session=session)
+    else:
+        raise HTTPException(
+            status_code=404,
+            detail="No file found to match {}".format(whatsplaying["video_file"]),
+        )
+    return {
+        "media_type": media_type,
+        "current_time": current_time,
+        "media_info": media_info,
+    }
